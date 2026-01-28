@@ -1,5 +1,6 @@
 package mx.edu.uas.radiouas
 
+import androidx.annotation.OptIn
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,10 +12,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-
+import androidx.media3.common.util.UnstableApi
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.items
 // Importante: Estos colores deben estar definidos en tu archivo de colores o cámbialos por:
 // val AzulUAS = androidx.compose.ui.graphics.Color(0xFF003366)
 
+@OptIn(UnstableApi::class)
 @Composable
 fun PodcastsScreen(radioViewModel: RadioViewModel) {
     var items by remember { mutableStateOf<List<EmbyItem>>(emptyList()) }
@@ -61,23 +65,19 @@ fun PodcastsScreen(radioViewModel: RadioViewModel) {
         }
 
         LazyColumn {
-            items(items.size) { index ->
-                val item = items[index]
-                ListItem(
-                    headlineContent = { Text(item.Name) },
-                    modifier = Modifier.clickable {
-                        if (item.Type == "MusicAlbum") {
-                            currentFolderId = item.Id
+            items(radioViewModel.listaPodcasts) { item ->
+                PodcastCard(
+                    podcast = item,
+                    radioViewModel = radioViewModel,
+                    onClick = {
+                        // Lógica: Si ya es este y suena, pausa. Si no, reproduce.
+                        if (radioViewModel.currentTitle == item.titulo && radioViewModel.isPlaying) {
+                            radioViewModel.player.pause()
                         } else {
-                            // GENERAMOS LA URL DE EMBY
-                            val urlPodcasts = EmbyClient.getStreamUrl(item.Id)
-
-                            // ¡A REPRODUCIR!
-                            radioViewModel.reproducirAudio(urlPodcasts)
+                            radioViewModel.reproducirAudio(item.streamUrl, item.titulo)
                         }
                     }
                 )
-                HorizontalDivider()
             }
         }
     }

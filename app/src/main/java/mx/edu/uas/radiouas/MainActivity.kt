@@ -1,4 +1,4 @@
-package mx.edu.uas.radiouas // Asegúrate de que coincida con tu paquete
+package mx.edu.uas.radiouas
 
 import mx.edu.uas.radiouas.ui.theme.RadioUASTheme
 import android.os.Bundle
@@ -14,12 +14,13 @@ import androidx.compose.ui.graphics.Color
 import kotlinx.coroutines.launch
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
-import androidx.media3.common.MediaItem
+import androidx.media3.common.util.UnstableApi
 
 // Color Azul Marino Institucional UAS
 val AzulUAS = Color(0xFF002D56)
 
 class MainActivity : ComponentActivity() {
+    @androidx.annotation.OptIn(UnstableApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -35,6 +36,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@androidx.annotation.OptIn(UnstableApi::class)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(radioViewModel: RadioViewModel) {
@@ -76,13 +78,18 @@ fun MainScreen(radioViewModel: RadioViewModel) {
                         }
                     }
                 )
+
+            },
+            bottomBar = {
+                MiniPlayer(radioViewModel = radioViewModel)
             }
-        ) { paddingValues ->
+        ) {
+            paddingValues ->
             Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
                 // Aquí llamaremos a cada sección según la selección
                 when (currentSection) {
                     "Noticias" -> NoticiasScreen()
-                    "Radio" -> RadioPlayerScreen()
+                    "Radio" -> RadioPlayerScreen(radioViewModel)
                     "Video" -> VideoPlayerScreen() // <--- Ahora ya tiene funcionalidad real
                     "Programacion" -> Text("Horarios Semanales")
                     "Podcasts" -> PodcastsScreen(radioViewModel)

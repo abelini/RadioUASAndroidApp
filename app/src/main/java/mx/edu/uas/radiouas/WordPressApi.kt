@@ -18,7 +18,7 @@ data class WPContent(val rendered: String)
 
 // 2. La interfaz que define la ruta de la API
 interface WordPressApi {
-    @GET("wp-json/wp/v2/posts?categories=1&per_page=10")
+    @GET("wp-json/wp/v2/posts?categories=319&per_page=10")
     suspend fun getUltimasNoticias(): List<WPPost>
 }
 

@@ -77,7 +77,12 @@ object EmbyClient {
     }
 
     fun getStreamUrl(itemId: String): String {
-        return "${BASE_URL}emby/Audio/$itemId/stream?api_key=5127307a978c45b684dd90d0888f8b84"
+        return "${BASE_URL}emby/Audio/$itemId/stream.mp3?static=true&api_key=5127307a978c45b684dd90d0888f8b84"
+    }
+
+    fun getImageUrl(itemId: String): String {
+        // Construimos la URL apuntando a la imagen primaria del Item
+        return "${BASE_URL}emby/Items/$itemId/Images/Primary?api_key=5127307a978c45b684dd90d0888f8b84"
     }
 
     // Instancia de Retrofit vinculada a la interfaz
