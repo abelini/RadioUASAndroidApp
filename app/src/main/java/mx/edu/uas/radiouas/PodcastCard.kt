@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -43,7 +44,7 @@ fun PodcastCard(
     val icono = if (esEpisodio) {
         if (estaSonando) Icons.Filled.Pause else Icons.Filled.PlayArrow
     } else {
-        Icons.Filled.ArrowForwardIos // Icono de "Ir a detalle"
+        Icons.AutoMirrored.Filled.ArrowForwardIos // Icono de "Ir a detalle"
     }
 
     Card(

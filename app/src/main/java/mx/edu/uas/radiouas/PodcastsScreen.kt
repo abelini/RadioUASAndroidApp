@@ -101,13 +101,15 @@ fun VistaDetallePrograma(radioViewModel: RadioViewModel) {
                     radioViewModel = radioViewModel,
                     onClick = {
                         if (radioViewModel.currentTitle == episodio.titulo && radioViewModel.isPlaying) {
-                            radioViewModel.player.pause()
+                            //radioViewModel.player.pause()
+                            radioViewModel.pausar()
                         } else {
                             // AQUÍ PASAMOS LOS 3 DATOS:
                             radioViewModel.reproducirAudio(
                                 url = episodio.streamUrl,
                                 titulo = episodio.titulo,
-                                subtitulo = episodio.descripcion
+                                subtitulo = episodio.descripcion,
+                                imagenUrl = episodio.urlImagen
                             )
                         }
                     }

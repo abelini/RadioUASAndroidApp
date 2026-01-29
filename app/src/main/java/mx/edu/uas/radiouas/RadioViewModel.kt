@@ -1,47 +1,48 @@
 package mx.edu.uas.radiouas
 
 import android.app.Application
+import android.content.ComponentName
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.MimeTypes
 import androidx.media3.common.Player
-import androidx.media3.common.util.UnstableApi
-import androidx.media3.datasource.DefaultHttpDataSource
-import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.session.MediaController
+import androidx.media3.session.SessionToken
+import com.google.common.util.concurrent.ListenableFuture
+import com.google.common.util.concurrent.MoreExecutors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.json.JSONObject // <--- IMPORTANTE: Para leer el JSON
+import org.json.JSONObject
 import java.net.URL
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-@UnstableApi
 class RadioViewModel(application: Application) : AndroidViewModel(application) {
 
     // --- VARIABLES DE LA RADIO ---
-    var currentProgramUrl = "https://spc.radiouas.org/api/schedule/current_program"
+    private val RADIO_LOGO_URL = "https://radiouas.org/wp-content/uploads/2023/04/cropped-Logo-Radio-UAS-2023-1.png"
+    var currentProgramUrl = "https://spc.radiouas.org/api/schedule/now?format=json"
     var streamURL = "https://stream9.mexiserver.com/8410/stream"
 
-    // Almacenamos los datos "En Vivo" aquí para recuperarlos cuando soltamos un podcast
     private var liveProgramName: String = "Radio UAS - 96.1 FM"
-    private var liveProductionName: String = "Señal En Vivo"
+    private var liveProductionName: String = "Señal en vivo"
 
     // --- ESTADOS DE UI ---
     var isPlaying by mutableStateOf(false)
     var isLoading by mutableStateOf(false)
 
-    // LO QUE SE MUESTRA EN PANTALLA:
-    var currentTitle by mutableStateOf("Cargando programación...")
-    var currentSubtitle by mutableStateOf("Espere un momento...") // <--- NUEVO
+    var currentTitle by mutableStateOf("Cargando...")
+    var currentSubtitle by mutableStateOf("Conectando servicio...")
 
     // --- VARIABLES DE PODCASTS ---
     var listaPodcasts by mutableStateOf<List<Podcast>>(emptyList())
@@ -50,67 +51,95 @@ class RadioViewModel(application: Application) : AndroidViewModel(application) {
     var hayMasEpisodios by mutableStateOf(true)
     var cargandoMas by mutableStateOf(false)
 
-    // --- CONFIGURACIÓN PLAYER ---
-    val player: ExoPlayer = ExoPlayer.Builder(application)
-        .setMediaSourceFactory(
-            DefaultMediaSourceFactory(application)
-                .setDataSourceFactory(
-                    DefaultHttpDataSource.Factory()
-                        .setUserAgent("RadioUAS_Android")
-                        .setAllowCrossProtocolRedirects(true)
-                )
-        )
-        .build()
+    // --- CONEXIÓN CON EL SERVICIO (NUEVO) ---
+    // El player ahora puede ser nulo mientras conecta
+    var player: Player? by mutableStateOf(null)
+    private var controllerFuture: ListenableFuture<MediaController>? = null
 
     init {
-        player.addListener(object : Player.Listener {
-            override fun onIsPlayingChanged(playing: Boolean) {
-                isPlaying = playing
-            }
-            override fun onPlaybackStateChanged(state: Int) {
-                isLoading = (state == Player.STATE_BUFFERING)
-            }
-        })
+        iniciarConexionServicio()
 
+        // Cargamos datos iniciales
         obtenerProgramacionEnVivo()
         cargarProgramas()
+    }
+
+    private fun iniciarConexionServicio() {
+        val context = getApplication<Application>()
+
+        // 1. Creamos el Token para buscar nuestro RadioAudioService
+        val sessionToken = SessionToken(
+            context,
+            ComponentName(context, RadioAudioService::class.java)
+        )
+
+        // 2. Construimos el MediaController (Async)
+        controllerFuture = MediaController.Builder(context, sessionToken).buildAsync()
+
+        // 3. Escuchamos cuando la conexión esté lista
+        controllerFuture?.addListener({
+            try {
+                // Aquí obtenemos el control real del servicio
+                val controller = controllerFuture?.get()
+                this.player = controller
+
+                // Configuración inicial del controller
+                controller?.addListener(object : Player.Listener {
+                    override fun onIsPlayingChanged(playing: Boolean) {
+                        isPlaying = playing
+                    }
+                    override fun onPlaybackStateChanged(state: Int) {
+                        isLoading = (state == Player.STATE_BUFFERING)
+                    }
+                    // Sincronizar metadatos si la app se cerró y volvió a abrir
+                    override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
+                        mediaMetadata.title?.let { currentTitle = it.toString() }
+                        mediaMetadata.artist?.let { currentSubtitle = it.toString() }
+                    }
+                })
+
+                // Actualizamos estado inicial por si ya estaba sonando
+                isPlaying = controller?.isPlaying == true
+
+                // Si ya hay algo sonando, recuperamos los títulos
+                if (controller?.mediaItemCount ?: 0 > 0) {
+                    controller?.mediaMetadata?.title?.let { currentTitle = it.toString() }
+                    controller?.mediaMetadata?.artist?.let { currentSubtitle = it.toString() }
+                } else {
+                    // Si no suena nada, mostramos info de la radio
+                    currentTitle = liveProgramName
+                    currentSubtitle = liveProductionName
+                }
+
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }, MoreExecutors.directExecutor())
     }
 
     // --- 1. LÓGICA RADIO EN VIVO (JSON) ---
     private fun obtenerProgramacionEnVivo() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                // Leemos el texto de la URL
                 val jsonString = URL(currentProgramUrl).readText()
-
-                // Parseamos el JSON
                 val jsonObject = JSONObject(jsonString)
                 val programa = jsonObject.optString("programa", "Radio UAS")
                 val produccion = jsonObject.optString("produccion", "En Vivo")
 
-                // Guardamos en variables internas
                 liveProgramName = programa
                 liveProductionName = produccion
 
                 withContext(Dispatchers.Main) {
-                    // Si estamos escuchando la radio (o nada), actualizamos la pantalla
-                    val urlActual = player.currentMediaItem?.localConfiguration?.uri?.toString()
+                    // Solo actualizamos si estamos en modo Radio (o vacío)
+                    val urlActual = player?.currentMediaItem?.localConfiguration?.uri?.toString()
                     if (urlActual == null || urlActual == streamURL) {
                         currentTitle = liveProgramName
                         currentSubtitle = liveProductionName
                     }
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
-                // Fallback en caso de error de red
                 liveProgramName = "Radio UAS - 96.1 FM"
                 liveProductionName = "Señal En Vivo"
-                withContext(Dispatchers.Main) {
-                    if (currentTitle == "Cargando programación...") {
-                        currentTitle = liveProgramName
-                        currentSubtitle = liveProductionName
-                    }
-                }
             }
         }
     }
@@ -124,7 +153,7 @@ class RadioViewModel(application: Application) : AndroidViewModel(application) {
                     itemTypes = "MusicAlbum",
                     recursive = true,
                     sortBy = "SortName",
-                    sortOrder = "Ascending" // A-Z
+                    sortOrder = "Ascending"
                 )
                 val listaMapeada = respuesta.Items.map { item ->
                     Podcast(
@@ -174,7 +203,6 @@ class RadioViewModel(application: Application) : AndroidViewModel(application) {
                     Podcast(
                         id = item.Id,
                         titulo = formatearFechaTitulo(item.Name),
-                        // Aquí guardamos el nombre del Álbum para usarlo de subtítulo luego
                         descripcion = programaSeleccionado!!.titulo,
                         urlImagen = programaSeleccionado!!.urlImagen,
                         streamUrl = EmbyClient.getStreamUrl(item.Id)
@@ -191,59 +219,87 @@ class RadioViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // --- 3. CONTROL DE REPRODUCCIÓN UNIFICADO ---
+    // --- 3. CONTROL DE REPRODUCCIÓN ---
 
     fun playRadioOAlternar() {
-        val urlActual = player.currentMediaItem?.localConfiguration?.uri?.toString()
+        val p = player ?: return
+
+        val urlActual = p.currentMediaItem?.localConfiguration?.uri?.toString()
         if (urlActual == streamURL) {
-            // Ya es radio, solo Play/Pause
             toggleReproduccion()
         } else {
-            // Era podcast, cambiamos a Radio y recuperamos los textos del JSON
-            reproducirAudio(streamURL, liveProgramName, liveProductionName)
+            // USAMOS LA IMAGEN LOCAL (R.drawable.logo_radio)
+            reproducirAudio(
+                streamURL,
+                liveProgramName,
+                liveProductionName,
+                obtenerUriLocal(R.drawable.logo_radio_app) // <--- CAMBIO AQUÍ
+            )
         }
     }
 
     fun toggleReproduccion() {
-        if (player.playbackState == Player.STATE_IDLE || player.mediaItemCount == 0) {
-            // Si está vacío, cargar Radio
-            reproducirAudio(streamURL, liveProgramName, liveProductionName)
+        val p = player ?: return
+
+        if (p.playbackState == Player.STATE_IDLE || p.mediaItemCount == 0) {
+            // USAMOS LA IMAGEN LOCAL
+            reproducirAudio(
+                streamURL,
+                liveProgramName,
+                liveProductionName,
+                obtenerUriLocal(R.drawable.logo_radio_app) // <--- CAMBIO AQUÍ
+            )
         } else {
-            if (isPlaying) player.pause() else player.play()
+            if (isPlaying) p.pause() else p.play()
         }
     }
 
-    // FUNCIÓN MAESTRA: Acepta URL, Título y Subtítulo
-    fun reproducirAudio(url: String, titulo: String, subtitulo: String) {
-        this.currentTitle = titulo
-        this.currentSubtitle = subtitulo // Actualizamos UI
+    // Esta función convierte un recurso R.drawable.xxx en un String Uri
+    private fun obtenerUriLocal(resourceId: Int): String {
+        return "android.resource://${getApplication<Application>().packageName}/$resourceId"
+    }
 
+    // Método helper para pausar explícitamente (útil para la UI)
+    fun pausar() {
+        player?.pause()
+    }
+
+    fun reproducirAudio(url: String, titulo: String, subtitulo: String, imagenUrl: String) {
+        val p = player ?: return
+
+        this.currentTitle = titulo
+        this.currentSubtitle = subtitulo
         isLoading = true
 
+        // Construimos la metadata CON LA IMAGEN
         val metadata = MediaMetadata.Builder()
             .setTitle(titulo)
-            .setArtist(subtitulo) // Guardamos el subtítulo en metadata también
+            .setArtist(subtitulo)
+            .setArtworkUri(android.net.Uri.parse(imagenUrl))
             .build()
-
+        val mimeType = if (url == streamURL) MimeTypes.AUDIO_MPEG else null
         val mediaItem = MediaItem.Builder()
             .setUri(url)
+            .setMimeType(mimeType)
             .setMediaMetadata(metadata)
             .build()
 
-        player.stop()
-        player.clearMediaItems()
-        player.setMediaItem(mediaItem)
-        player.prepare()
-        player.play()
+        p.stop()
+        p.clearMediaItems()
+        p.setMediaItem(mediaItem)
+        p.prepare()
+        p.play()
     }
 
-    fun detener() { player.stop() }
+    fun detener() { player?.stop() }
 
     fun cerrarPrograma() { programaSeleccionado = null }
 
     override fun onCleared() {
         super.onCleared()
-        player.release()
+        // Importante: Liberamos la conexión al servicio (MediaController)
+        // El servicio puede seguir sonando, pero el ViewModel se desconecta
+        MediaController.releaseFuture(controllerFuture!!)
     }
 
     // --- UTILS ---
