@@ -1,12 +1,11 @@
 package mx.edu.uas.radiouas
 
+import android.os.Build
 import androidx.annotation.OptIn
-import androidx.compose.foundation.clickable
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -14,70 +13,128 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.util.UnstableApi
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.grid.items
-// Importante: Estos colores deben estar definidos en tu archivo de colores o cámbialos por:
-// val AzulUAS = androidx.compose.ui.graphics.Color(0xFF003366)
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.ui.text.style.TextOverflow
 
+@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(UnstableApi::class)
 @Composable
 fun PodcastsScreen(radioViewModel: RadioViewModel) {
-    var items by remember { mutableStateOf<List<EmbyItem>>(emptyList()) }
-    var currentFolderId by remember { mutableStateOf<String?>("5") }
-    var isLoading by remember { mutableStateOf(true) }
-    var errorMessage by remember { mutableStateOf<String?>(null) } // Para ver el error en pantalla
 
-    LaunchedEffect(currentFolderId) {
-        isLoading = true
-        errorMessage = null
-        try {
-            val itemType = if (currentFolderId == "5") "MusicAlbum" else "Audio"
-            // Forzamos Recursive = true para la primera carga si viene vacío
-            val response = EmbyClient.api.getItems(
-                parentId = currentFolderId,
-                itemTypes = itemType,
-                recursive = (currentFolderId == "5")
-            )
-
-            if (response.Items.isEmpty()) {
-                errorMessage = "No se encontraron elementos en esta categoría."
-            } else {
-                items = response.Items
-            }
-            isLoading = false
-        } catch (e: Exception) {
-            isLoading = false
-            // Esto nos dirá si es SSL, Timeout o qué
-            errorMessage = "Error: ${e.localizedMessage ?: "Conexión fallida"}"
-        }
+    // NAVEGACIÓN SIMPLE:
+    if (radioViewModel.programaSeleccionado == null) {
+        // VISTA 1: GRID DE PROGRAMAS (ÁLBUMES)
+        VistaListaProgramas(radioViewModel)
+    } else {
+        // VISTA 2: LISTA DE EPISODIOS (PISTAS)
+        VistaDetallePrograma(radioViewModel)
     }
+}
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text("Programas Radio UAS", style = MaterialTheme.typography.headlineSmall, color = AzulUAS)
+// --- SUB-VISTA: LISTA DE PROGRAMAS ---
+@RequiresApi(Build.VERSION_CODES.O)
+@OptIn(UnstableApi::class)
+@Composable
+fun VistaListaProgramas(radioViewModel: RadioViewModel) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        Text(
+            text = "Programas",
+            style = MaterialTheme.typography.headlineMedium,
+            modifier = Modifier.padding(16.dp),
+            color = AzulUAS
+        )
 
-        if (isLoading) {
-            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-        }
-
-        // Si hay error, lo mostramos con letras rojas
-        errorMessage?.let {
-            Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp))
-            Button(onClick = { currentFolderId = "5" }) { Text("Reintentar") }
-        }
-
-        LazyColumn {
-            items(radioViewModel.listaPodcasts) { item ->
+        LazyColumn(
+            contentPadding = PaddingValues(bottom = 80.dp)
+        ) {
+            items(radioViewModel.listaPodcasts) { programa ->
                 PodcastCard(
-                    podcast = item,
+                    podcast = programa,
                     radioViewModel = radioViewModel,
                     onClick = {
-                        // Lógica: Si ya es este y suena, pausa. Si no, reproduce.
-                        if (radioViewModel.currentTitle == item.titulo && radioViewModel.isPlaying) {
+                        // AQUÍ CAMBIA LA LÓGICA:
+                        // En lugar de reproducir, "abrimos" el folder
+                        radioViewModel.abrirPrograma(programa)
+                    }
+                )
+            }
+        }
+    }
+}
+
+// --- SUB-VISTA: DETALLE DE EPISODIOS ---
+@RequiresApi(Build.VERSION_CODES.O)
+@OptIn(UnstableApi::class)
+@Composable
+fun VistaDetallePrograma(radioViewModel: RadioViewModel) {
+    val programa = radioViewModel.programaSeleccionado!!
+
+    Column(modifier = Modifier.fillMaxSize()) {
+
+        // ENCABEZADO CON BOTÓN ATRÁS
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = { radioViewModel.cerrarPrograma() }) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Atrás", tint = AzulUAS)
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = programa.titulo, // Título del Programa arriba
+                style = MaterialTheme.typography.titleLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+
+        // LISTA DE EPISODIOS
+        // ... dentro de VistaDetallePrograma ...
+
+        LazyColumn(
+            contentPadding = PaddingValues(bottom = 80.dp)
+        ) {
+            // 1. LOS EPISODIOS
+            items(radioViewModel.listaEpisodios) { episodio ->
+                PodcastCard(
+                    podcast = episodio,
+                    radioViewModel = radioViewModel,
+                    onClick = {
+                        if (radioViewModel.currentTitle == episodio.titulo && radioViewModel.isPlaying) {
                             radioViewModel.player.pause()
                         } else {
-                            radioViewModel.reproducirAudio(item.streamUrl, item.titulo)
+                            // AQUÍ PASAMOS LOS 3 DATOS:
+                            radioViewModel.reproducirAudio(
+                                url = episodio.streamUrl,
+                                titulo = episodio.titulo,
+                                subtitulo = episodio.descripcion
+                            )
                         }
                     }
                 )
+            }
+
+            // 2. EL BOTÓN "CARGAR MÁS" (Solo aparece si hay más)
+            if (radioViewModel.hayMasEpisodios && radioViewModel.listaEpisodios.isNotEmpty()) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Button(
+                            onClick = { radioViewModel.cargarMasEpisodios() },
+                            enabled = !radioViewModel.cargandoMas // Desactiva si ya está cargando
+                        ) {
+                            if (radioViewModel.cargandoMas) {
+                                Text("Cargando...")
+                            } else {
+                                Text("Cargar más episodios")
+                            }
+                        }
+                    }
+                }
             }
         }
     }

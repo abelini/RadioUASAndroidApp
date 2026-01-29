@@ -1,22 +1,20 @@
 package mx.edu.uas.radiouas
 
+import androidx.annotation.OptIn
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.media3.common.util.UnstableApi
 
-// Quitamos @OptIn(UnstableApi::class) porque ya no manipulamos el ExoPlayer directo aquí
-
+@OptIn(UnstableApi::class)
 @Composable
 fun RadioPlayerScreen(radioViewModel: RadioViewModel) {
-    // ELIMINAMOS: val context, val streamUrl, val exoPlayer...
-    // ELIMINAMOS: var isPlaying, var isLoading (locales)
-    // ELIMINAMOS: DisposableEffect
-
-    // Todo lo leemos directamente del ViewModel
 
     Column(
         modifier = Modifier
@@ -32,6 +30,13 @@ fun RadioPlayerScreen(radioViewModel: RadioViewModel) {
             style = MaterialTheme.typography.headlineMedium,
             color = AzulUAS,
             textAlign = TextAlign.Center
+        )
+        Text(
+            text = radioViewModel.currentSubtitle, // <--- USA LA VARIABLE
+            style = MaterialTheme.typography.bodySmall,
+            color = Color.Gray,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
 
         Spacer(modifier = Modifier.height(30.dp))
@@ -58,16 +63,5 @@ fun RadioPlayerScreen(radioViewModel: RadioViewModel) {
                 Text(if (radioViewModel.isPlaying) "PAUSAR" else "REPRODUCIR")
             }
         }
-
-        // Opcional: Si quieres un botón específico para volver a la Radio en Vivo
-        // si estás escuchando un podcast:
-        /*
-        Spacer(modifier = Modifier.height(16.dp))
-        TextButton(onClick = {
-             radioViewModel.reproducirAudio(radioViewModel.streamURL, radioViewModel.currentTitle ?: "Radio UAS")
-        }) {
-            Text("Volver a la señal en vivo", color = AzulUAS)
-        }
-        */
     }
 }

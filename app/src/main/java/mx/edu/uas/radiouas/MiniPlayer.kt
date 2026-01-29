@@ -1,5 +1,6 @@
 package mx.edu.uas.radiouas
 
+import androidx.annotation.OptIn
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -9,9 +10,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.media3.common.util.UnstableApi
 
+@OptIn(UnstableApi::class)
 @Composable
 fun MiniPlayer(radioViewModel: RadioViewModel) {
 
@@ -32,18 +36,23 @@ fun MiniPlayer(radioViewModel: RadioViewModel) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Información del Programa
-            Column(modifier = Modifier.weight(1f)) {
+            Column(
+                modifier = Modifier.weight(1f).padding(start = 8.dp)
+            ) {
                 Text(
-                    text = radioViewModel.currentTitle ?: "Radio UAS",
-                    style = MaterialTheme.typography.titleMedium,
+                    text = radioViewModel.currentTitle, // Título principal
+                    style = MaterialTheme.typography.bodyLarge,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+
+                // AQUI ESTÁ LA SOLUCIÓN: Usamos la variable subtitle
                 Text(
-                    // Muestra "En espera" si no suena, o "En vivo" si ya le diste play
-                    text = if (radioViewModel.isPlaying) "En Vivo" else "Toca para escuchar",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
+                    text = radioViewModel.currentSubtitle, // <--- CAMBIO IMPORTANTE
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray, // Un gris suave se ve bien
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
 

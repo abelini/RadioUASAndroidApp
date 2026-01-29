@@ -6,9 +6,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.PauseCircle
-import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material.icons.filled.ArrowForwardIos
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -20,13 +20,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.util.UnstableApi
-
-import androidx.compose.material.icons.filled.PlayArrow // Cambiamos PlayCircle por PlayArrow (más seguro)
-import androidx.compose.material.icons.filled.Pause     // Cambiamos PauseCircle por Pause
-import androidx.compose.material.icons.filled.MusicNote
 import coil.compose.AsyncImage
 
-// --- COMPONENTE VISUAL ---
 @OptIn(UnstableApi::class)
 @Composable
 fun PodcastCard(
@@ -34,22 +29,36 @@ fun PodcastCard(
     radioViewModel: RadioViewModel,
     onClick: () -> Unit
 ) {
-    // LÓGICA VISUAL:
-    // Comparamos si el título actual del ViewModel coincide con este podcast
+    // --- LÓGICA DE ICONOS ---
+
+    // 1. ¿Estamos viendo una lista de EPISODIOS o de PROGRAMAS?
+    // Si 'programaSeleccionado' no es null, significa que estamos DENTRO de un álbum (viendo episodios).
+    val esEpisodio = radioViewModel.programaSeleccionado != null
+
+    // 2. Lógica de Reproducción (Solo importa si es episodio)
     val esEstePodcast = radioViewModel.currentTitle == podcast.titulo
-    // Verificamos si realmente está sonando (para poner Pause o Play)
     val estaSonando = esEstePodcast && radioViewModel.isPlaying
+
+    // 3. Selección del Icono
+    val icono = if (esEpisodio) {
+        if (estaSonando) Icons.Filled.Pause else Icons.Filled.PlayArrow
+    } else {
+        Icons.Filled.ArrowForwardIos // Icono de "Ir a detalle"
+    }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 6.dp, horizontal = 12.dp)
-            .height(90.dp) // Altura fija para uniformidad
-            .clickable { onClick() }, // Click en toda la tarjeta
+            .height(90.dp)
+            .clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            // Si está sonando, le damos un fondo sutilmente diferente (opcional)
-            containerColor = if (esEstePodcast) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant
+            // Resaltamos el fondo solo si es un episodio sonando
+            containerColor = if (esEpisodio && esEstePodcast)
+                MaterialTheme.colorScheme.secondaryContainer
+            else
+                MaterialTheme.colorScheme.surfaceVariant
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -59,22 +68,22 @@ fun PodcastCard(
                 .padding(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 1. IMAGEN DE PORTADA (Con Coil)
+            // --- IMAGEN ---
             AsyncImage(
                 model = podcast.urlImagen,
-                contentDescription = "Portada del Podcast",
+                contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
-                    .size(74.dp) // Cuadrado de la imagen
+                    .size(74.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(Color.Gray) // Color mientras carga
+                    .background(Color.LightGray)
             )
 
             Spacer(modifier = Modifier.width(16.dp))
 
-            // 2. INFORMACIÓN (Título y Descripción)
+            // --- TEXTOS ---
             Column(
-                modifier = Modifier.weight(1f), // Ocupa el espacio disponible
+                modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
@@ -83,8 +92,7 @@ fun PodcastCard(
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    // Si suena, pintamos el texto del color primario (AzulUAS)
-                    color = if (esEstePodcast) AzulUAS else MaterialTheme.colorScheme.onSurface
+                    color = if (esEpisodio && esEstePodcast) AzulUAS else MaterialTheme.colorScheme.onSurface
                 )
 
                 if (podcast.descripcion.isNotEmpty()) {
@@ -98,16 +106,21 @@ fun PodcastCard(
                 }
             }
 
-            // 3. BOTÓN DE ACCIÓN (Play/Pause)
+            // --- BOTÓN / INDICADOR ---
             IconButton(
                 onClick = onClick,
                 modifier = Modifier.size(48.dp)
             ) {
                 Icon(
-                    imageVector = if (estaSonando) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                    contentDescription = if (estaSonando) "Pausar" else "Reproducir",
-                    tint = if (esEstePodcast) AzulUAS else MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(40.dp)
+                    imageVector = icono,
+                    contentDescription = null,
+                    // Si es navegación (flecha), usamos gris. Si es Play, usamos azul o primario.
+                    tint = if (!esEpisodio) Color.Gray
+                    else if (esEstePodcast) AzulUAS
+                    else MaterialTheme.colorScheme.primary,
+
+                    // La flecha se ve mejor un poco más pequeña (24dp) que el botón de Play (40dp)
+                    modifier = Modifier.size(if (esEpisodio) 40.dp else 24.dp)
                 )
             }
         }

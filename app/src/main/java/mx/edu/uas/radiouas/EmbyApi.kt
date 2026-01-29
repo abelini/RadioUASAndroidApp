@@ -33,7 +33,13 @@ interface EmbyApi {
         @Query("api_key") apiKey: String = "5127307a978c45b684dd90d0888f8b84",
         @Query("IncludeItemTypes") itemTypes: String? = null,
         @Query("Recursive") recursive: Boolean = false,
-        @Query("Fields") fields: String = "PrimaryImageAspectRatio"
+        @Query("Fields") fields: String = "PrimaryImageAspectRatio",
+
+        // --- AGREGADOS PARA PAGINACIÓN Y ORDEN ---
+        @Query("Limit") limit: Int? = null,           // Cuántos traer
+        @Query("StartIndex") startIndex: Int? = null, // Desde cuál empezar
+        @Query("SortBy") sortBy: String = "SortName", // Ordenar por Nombre
+        @Query("SortOrder") sortOrder: String = "Descending" // Descendente (Z-A)
     ): EmbyResponse
 }
 
