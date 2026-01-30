@@ -18,11 +18,8 @@ class ProgramacionViewModel : ViewModel() {
 
     private val _schedule = MutableStateFlow<List<ScheduleItem>>(emptyList())
     val schedule: StateFlow<List<ScheduleItem>> = _schedule
-
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
-
-    // 1 = Lunes, ... 7 = Domingo (Ajuste para Java Time que usa 1=Lunes)
     private val _selectedDay = MutableStateFlow(LocalDate.now().dayOfWeek.value)
     val selectedDay: StateFlow<Int> = _selectedDay
 
@@ -54,25 +51,23 @@ class ProgramacionViewModel : ViewModel() {
     // Lógica para saber si un programa es "Ahora"
     @RequiresApi(Build.VERSION_CODES.O)
     fun isLiveNow(startStr: String, endStr: String): Boolean {
-        // Solo calculamos "En vivo" si estamos viendo el día de HOY
-        if (_selectedDay.value != LocalDate.now().dayOfWeek.value) return false
+        // Validación básica: Si no es el día seleccionado, no puede estar en vivo
+        if (_selectedDay.value != java.time.LocalDate.now().dayOfWeek.value) return false
 
         return try {
-            // Formateador para "6:45 AM" (Inglés por AM/PM)
-            val formatter = DateTimeFormatter.ofPattern("h:mm a", Locale.ENGLISH)
+            // Formateador estricto para "HH:mm:ss"
+            val formatter = DateTimeFormatter.ofPattern("HH:mm:ss")
 
-            val startTime = LocalTime.parse(startStr.uppercase(), formatter)
-            var endTime = LocalTime.parse(endStr.uppercase(), formatter)
+            val startTime = LocalTime.parse(startStr, formatter)
+            val endTime = LocalTime.parse(endStr, formatter)
             val now = LocalTime.now()
 
-            // Caso especial: Si termina a media noche o pasa de día (ej: 11 PM a 1 AM)
-            // Para simplicidad de esta versión, asumimos horarios del mismo día
-            if (endTime.isBefore(startTime)) {
-                // Si termina antes de empezar, es que termina al día siguiente (madrugada)
-                // Ajuste lógico simple:
-                return now.isAfter(startTime) || now.isBefore(endTime)
+            // Caso especial: Programas que cruzan la medianoche (ej: 23:00 a 00:00)
+            if (endTime.isBefore(startTime) || endTime == LocalTime.MIDNIGHT) {
+                return now.isAfter(startTime) || (now.isBefore(endTime) && now != endTime)
             }
 
+            // Caso normal
             now.isAfter(startTime) && now.isBefore(endTime)
         } catch (e: Exception) {
             false

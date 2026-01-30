@@ -1,4 +1,4 @@
-package mx.edu.uas.radiouas.ui.screens
+package mx.edu.uas.radiouas
 
 import android.os.Build
 import androidx.annotation.RequiresApi
@@ -8,12 +8,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.rounded.* // Para los iconos redondeados
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,7 +27,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import mx.edu.uas.radiouas.model.ScheduleItem
 import mx.edu.uas.radiouas.ui.viewmodel.ProgramacionViewModel
-import androidx.compose.foundation.lazy.rememberLazyListState
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -37,16 +39,16 @@ fun ProgramacionScreen(
     val schedule by viewModel.schedule.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val selectedDay by viewModel.selectedDay.collectAsState()
+
+    // Estado para controlar el scroll de la lista
     val listState = rememberLazyListState()
 
+    // Efecto: Cuando carga la lista, busca cual es el programa en vivo y hace scroll
     LaunchedEffect(schedule) {
         if (schedule.isNotEmpty()) {
-            // Busamos el índice del primer elemento que esté "En Vivo"
             val liveIndex = schedule.indexOfFirst { item ->
-                viewModel.isLiveNow(item.starts, item.ends)
+                viewModel.isLiveNow(item.startTime, item.endTime)
             }
-
-            // Si encontramos uno, hacemos scroll suave hasta él
             if (liveIndex != -1) {
                 listState.animateScrollToItem(liveIndex)
             }
@@ -67,19 +69,17 @@ fun ProgramacionScreen(
             }
         } else {
             LazyColumn(
-                state = listState, // <--- 3. CONECTAMOS EL ESTADO AQUÍ
-                contentPadding = PaddingValues(bottom = 80.dp)
+                state = listState,
+                contentPadding = PaddingValues(bottom = 80.dp) // Espacio para que no lo tape el menú
             ) {
                 items(schedule) { item ->
-                    val isLive = viewModel.isLiveNow(item.starts, item.ends)
+                    val isLive = viewModel.isLiveNow(item.startTime, item.endTime)
                     ProgramItem(item, isLive)
                 }
             }
         }
     }
 }
-
-
 
 @Composable
 fun DaySelector(selectedDay: Int, onDaySelected: (Int) -> Unit) {
@@ -122,8 +122,16 @@ fun DaySelector(selectedDay: Int, onDaySelected: (Int) -> Unit) {
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun ProgramItem(item: ScheduleItem, isLive: Boolean) {
+    // 1. Convertimos las horas (00:00:00) a formato amigable (12:00 PM)
+    val displayStart = formatTimeForUser(item.startTime)
+    val displayEnd = formatTimeForUser(item.endTime)
+
+    // 2. Obtenemos el icono y color basado en la categoría
+    val style = getCategoryStyle(item.category)
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -132,32 +140,32 @@ fun ProgramItem(item: ScheduleItem, isLive: Boolean) {
         // Columna de HORA
         Column(
             horizontalAlignment = Alignment.End,
-            modifier = Modifier.width(60.dp).padding(top = 4.dp)
+            modifier = Modifier.width(65.dp).padding(top = 4.dp)
         ) {
             Text(
-                text = item.starts,
+                text = displayStart,
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Bold,
                 color = if (isLive) Color(0xFF003366) else Color.Gray
             )
             Text(
-                text = item.ends,
+                text = displayEnd,
                 style = MaterialTheme.typography.labelSmall,
                 color = Color.LightGray,
                 fontSize = 10.sp
             )
         }
 
-        // Línea divisoria visual
+        // Línea divisoria vertical
         Box(
             modifier = Modifier
                 .padding(horizontal = 12.dp)
                 .width(2.dp)
-                .height(80.dp) // Altura fija o dinámica
+                .height(80.dp)
                 .background(if (isLive) Color(0xFFD4AF37) else Color.LightGray.copy(alpha = 0.5f))
         )
 
-        // Tarjeta de Contenido
+        // Tarjeta del Programa
         Card(
             colors = CardDefaults.cardColors(
                 containerColor = if (isLive) Color(0xFFE8F0FE) else Color.White
@@ -169,32 +177,34 @@ fun ProgramItem(item: ScheduleItem, isLive: Boolean) {
                 modifier = Modifier.fillMaxSize().padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Icono (Basado en tu HTML o lógica)
-                // Aquí hacemos un truco: Si el HTML dice 'music', ponemos nota, etc.
-                val iconVector = getIconForHtml(item.iconHtml)
 
+                // ICONO CIRCULAR
                 Box(
                     modifier = Modifier
                         .size(40.dp)
                         .clip(CircleShape)
-                        .background(if (isLive) Color(0xFF003366) else Color(0xFFF0F0F0)),
+                        .background(
+                            if (isLive) Color(0xFF003366)
+                            else style.color.copy(alpha = 0.1f) // Color clarito si no está en vivo
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = iconVector,
+                        imageVector = style.icon,
                         contentDescription = null,
-                        tint = if (isLive) Color.White else Color.Gray,
-                        modifier = Modifier.size(20.dp)
+                        tint = if (isLive) Color.White else style.color,
+                        modifier = Modifier.size(22.dp)
                     )
                 }
 
                 Spacer(modifier = Modifier.width(12.dp))
 
+                // TEXTOS
                 Column(modifier = Modifier.weight(1f)) {
                     if (isLive) {
                         Text(
                             text = "EN VIVO",
-                            color = Color(0xFFD4AF37), // Oro
+                            color = Color(0xFFD4AF37),
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -206,7 +216,7 @@ fun ProgramItem(item: ScheduleItem, isLive: Boolean) {
                         maxLines = 1
                     )
                     Text(
-                        text = item.produccion,
+                        text = item.subtitle,
                         style = MaterialTheme.typography.bodySmall,
                         color = Color.Gray,
                         maxLines = 1
@@ -217,12 +227,19 @@ fun ProgramItem(item: ScheduleItem, isLive: Boolean) {
     }
 }
 
-// Función auxiliar simple para adivinar el icono
-fun getIconForHtml(html: String): ImageVector {
-    return when {
-        html.contains("music") -> Icons.Default.MusicNote
-        html.contains("school") -> Icons.Default.School
-        html.contains("user") -> Icons.Default.Mic // Entrevistas/Hablado
-        else -> Icons.Default.MusicNote
+// -----------------------------------------------------------------------------
+// FUNCIONES DE AYUDA (UTILS)
+// -----------------------------------------------------------------------------
+
+// Función para formatear hora
+@RequiresApi(Build.VERSION_CODES.O)
+fun formatTimeForUser(time24h: String): String {
+    return try {
+        val inputFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
+        val outputFormatter = DateTimeFormatter.ofPattern("h:mm a", Locale.US)
+        val time = LocalTime.parse(time24h, inputFormatter)
+        time.format(outputFormatter).uppercase()
+    } catch (e: Exception) {
+        time24h
     }
 }

@@ -3,18 +3,16 @@ package mx.edu.uas.radiouas.model
 import com.google.gson.annotations.SerializedName
 
 data class ScheduleItem(
+    @SerializedName("ID") val id: Int,
     val name: String,
-    val produccion: String,
-    // Usaremos esto para pintar iconos nativos en el UI
-    @SerializedName("icon") val iconHtml: String,
+    val subtitle: String,
+    val category: String, // "music", "standard", etc.
 
-    // Horarios para mostrar
-    val starts: String,
-    val ends: String,
+    // Mapeamos los nombres del JSON a nombres de variables más cómodos
+    @SerializedName("std_starts") val startTime: String, // "14:00:00"
+    @SerializedName("std_ends") val endTime: String,     // "14:30:00"
 
-    // ¡AGREGA ESTO A TU API SI PUEDES! Si no, vendrá null y pondremos un placeholder
-    @SerializedName("image_url") val imageUrl: String? = null,
-    @SerializedName("description") val description: String? = null
+    val dayOfWeek: Int
 )
 
 // Respuesta de la API (es una lista directa, pero por si acaso cambia)

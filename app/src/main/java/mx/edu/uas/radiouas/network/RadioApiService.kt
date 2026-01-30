@@ -10,7 +10,7 @@ import retrofit2.http.Query
 // Aquí definimos qué le podemos pedir al servidor
 interface RadioApiService {
 
-    @GET("api/schedule/daily")
+    @GET("api/schedule/daily?source=mobile-app")
     suspend fun getDailySchedule(
         @Query("day") day: Int // Enviamos ?day=1
     ): List<ScheduleItem>

@@ -15,7 +15,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import androidx.media3.common.util.UnstableApi
-import mx.edu.uas.radiouas.ui.screens.ProgramacionScreen
+//import mx.edu.uas.radiouas.ui.screens.ProgramacionScreen
 
 // Color Azul Marino Institucional UAS
 val AzulUAS = Color(0xFF002D56)
