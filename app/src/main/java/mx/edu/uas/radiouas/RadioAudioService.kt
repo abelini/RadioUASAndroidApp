@@ -2,7 +2,6 @@ package mx.edu.uas.radiouas
 
 import android.content.Intent
 import androidx.annotation.OptIn
-import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer

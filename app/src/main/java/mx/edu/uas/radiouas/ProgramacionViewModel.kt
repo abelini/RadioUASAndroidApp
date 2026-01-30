@@ -5,72 +5,75 @@ import androidx.annotation.RequiresApi
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import mx.edu.uas.radiouas.data.ScheduleRepository
 import mx.edu.uas.radiouas.model.ScheduleItem
-import mx.edu.uas.radiouas.network.RetrofitInstance // O como llames a tu instancia
+import mx.edu.uas.radiouas.network.RetrofitInstance
+import mx.edu.uas.radiouas.utils.ScheduleUtils
 import java.time.LocalDate
-import java.time.LocalTime
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 
+@RequiresApi(Build.VERSION_CODES.O)
 class ProgramacionViewModel : ViewModel() {
 
-    private val _schedule = MutableStateFlow<List<ScheduleItem>>(emptyList())
-    val schedule: StateFlow<List<ScheduleItem>> = _schedule
+    // 1. LOADING: Estado de carga
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
+
+    // 2. DÍA SELECCIONADO: Por defecto hoy
     private val _selectedDay = MutableStateFlow(LocalDate.now().dayOfWeek.value)
     val selectedDay: StateFlow<Int> = _selectedDay
 
+    // 3. LA LISTA (Aquí conectamos con el Repositorio)
+    // Ya no usamos _schedule local, leemos directo del Repositorio
+    val schedule: StateFlow<List<ScheduleItem>> = ScheduleRepository.fullSchedule
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // 4. EL PROGRAMA EN VIVO (Se actualiza solo cada minuto gracias al Repositorio)
+    val currentLiveProgram = ScheduleRepository.currentLiveProgram
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
     init {
+        // Cargar datos al iniciar
         loadScheduleForDay(_selectedDay.value)
     }
 
+    // Cambio de día en los botones (LUN, MAR...)
     fun onDaySelected(day: Int) {
         _selectedDay.value = day
         loadScheduleForDay(day)
     }
 
+    // Función que descarga datos y los manda al Repositorio
     private fun loadScheduleForDay(day: Int) {
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                // Llamada a la API
+                // 1. Descargamos de Internet
                 val response = RetrofitInstance.api.getDailySchedule(day)
-                _schedule.value = response
+
+                // 2. Guardamos en el Repositorio Global (IMPORTANTE)
+                // Esto hace que el "currentLiveProgram" se recalcule
+                ScheduleRepository.updateSchedule(response)
+
             } catch (e: Exception) {
                 e.printStackTrace()
-                _schedule.value = emptyList() // Manejo básico de error
+                // Si falla, mandamos lista vacía al repo
+                ScheduleRepository.updateSchedule(emptyList())
             } finally {
                 _isLoading.value = false
             }
         }
     }
 
-    // Lógica para saber si un programa es "Ahora"
-    @RequiresApi(Build.VERSION_CODES.O)
-    fun isLiveNow(startStr: String, endStr: String): Boolean {
-        // Validación básica: Si no es el día seleccionado, no puede estar en vivo
-        if (_selectedDay.value != java.time.LocalDate.now().dayOfWeek.value) return false
-
-        return try {
-            // Formateador estricto para "HH:mm:ss"
-            val formatter = DateTimeFormatter.ofPattern("HH:mm:ss")
-
-            val startTime = LocalTime.parse(startStr, formatter)
-            val endTime = LocalTime.parse(endStr, formatter)
-            val now = LocalTime.now()
-
-            // Caso especial: Programas que cruzan la medianoche (ej: 23:00 a 00:00)
-            if (endTime.isBefore(startTime) || endTime == LocalTime.MIDNIGHT) {
-                return now.isAfter(startTime) || (now.isBefore(endTime) && now != endTime)
-            }
-
-            // Caso normal
-            now.isAfter(startTime) && now.isBefore(endTime)
-        } catch (e: Exception) {
-            false
+    // Helper simple para usar en la UI (lista)
+    fun isLiveNow(start: String, end: String): Boolean {
+        val today = LocalDate.now().dayOfWeek.value
+        if (_selectedDay.value != today) {
+            return false
         }
+        return ScheduleUtils.isLiveNow(start, end)
     }
 }
