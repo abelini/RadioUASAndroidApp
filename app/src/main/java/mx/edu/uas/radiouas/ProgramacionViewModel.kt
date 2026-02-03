@@ -18,49 +18,39 @@ import java.time.LocalDate
 @RequiresApi(Build.VERSION_CODES.O)
 class ProgramacionViewModel : ViewModel() {
 
-    // 1. LOADING: Estado de carga
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
-    // 2. DÍA SELECCIONADO: Por defecto hoy
+    // Control del día seleccionado (1 = Lunes, 7 = Domingo)
     private val _selectedDay = MutableStateFlow(LocalDate.now().dayOfWeek.value)
     val selectedDay: StateFlow<Int> = _selectedDay
 
-    // 3. LA LISTA (Aquí conectamos con el Repositorio)
-    // Ya no usamos _schedule local, leemos directo del Repositorio
+    // La lista de programas viene directo del Repositorio (Single Source of Truth)
     val schedule: StateFlow<List<ScheduleItem>> = ScheduleRepository.fullSchedule
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // 4. EL PROGRAMA EN VIVO (Se actualiza solo cada minuto gracias al Repositorio)
+    // Programa actual en vivo (se actualiza reactivamente)
     val currentLiveProgram = ScheduleRepository.currentLiveProgram
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     init {
-        // Cargar datos al iniciar
         loadScheduleForDay(_selectedDay.value)
     }
 
-    // Cambio de día en los botones (LUN, MAR...)
     fun onDaySelected(day: Int) {
         _selectedDay.value = day
         loadScheduleForDay(day)
     }
 
-    // Función que descarga datos y los manda al Repositorio
     private fun loadScheduleForDay(day: Int) {
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                // 1. Descargamos de Internet
                 val response = RetrofitInstance.api.getDailySchedule(day)
-
-                // 2. Guardamos en el Repositorio Global (IMPORTANTE)
-                // Esto hace que el "currentLiveProgram" se recalcule
                 ScheduleRepository.updateSchedule(response)
-
             } catch (e: Exception) {
-                e.printStackTrace()
-                // Si falla, mandamos lista vacía al repo
+                // En caso de error, limpiamos o mantenemos estado anterior según prefieras.
+                // Aquí enviamos lista vacía para evitar datos corruptos.
                 ScheduleRepository.updateSchedule(emptyList())
             } finally {
                 _isLoading.value = false
@@ -68,9 +58,9 @@ class ProgramacionViewModel : ViewModel() {
         }
     }
 
-    // Helper simple para usar en la UI (lista)
     fun isLiveNow(start: String, end: String): Boolean {
         val today = LocalDate.now().dayOfWeek.value
+        // Solo mostramos "En Vivo" si la pestaña seleccionada es la de HOY
         if (_selectedDay.value != today) {
             return false
         }

@@ -6,18 +6,18 @@ import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
 import retrofit2.http.Query
 
-// 1. La "Carta del Menú" (Interfaz)
-// Aquí definimos qué le podemos pedir al servidor
+// Definición de los endpoints de la API
 interface RadioApiService {
 
+    // Obtenemos la programación diaria.
+    // El parámetro 'source' ayuda al servidor a saber que la petición viene de la App.
     @GET("api/schedule/daily?source=mobile-app")
     suspend fun getDailySchedule(
-        @Query("day") day: Int // Enviamos ?day=1
+        @Query("day") day: Int
     ): List<ScheduleItem>
 }
 
-// 2. El "Cliente" (Objeto Singleton)
-// Este es el objeto que usarás en el ViewModel para hacer la llamada
+// Instancia Singleton del cliente HTTP
 object RetrofitInstance {
 
     private const val BASE_URL = "https://spc.radiouas.org/"

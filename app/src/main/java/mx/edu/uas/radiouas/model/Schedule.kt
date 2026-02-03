@@ -4,16 +4,12 @@ import com.google.gson.annotations.SerializedName
 
 data class ScheduleItem(
     @SerializedName("ID") val id: Int,
-    val name: String,
-    val subtitle: String,
-
-    val slug: String,
-
-    val startTime: String,
-    val endTime: String,
-
-    val dayOfWeek: Int
+    @SerializedName("name") val name: String,
+    @SerializedName("subtitle") val subtitle: String,
+    @SerializedName("slug") val slug: String,
+    @SerializedName("startTime") val startTime: String,
+    @SerializedName("endTime") val endTime: String,
+    @SerializedName("dayOfWeek") val dayOfWeek: Int
 )
 
-// Respuesta de la API (es una lista directa, pero por si acaso cambia)
 typealias ScheduleResponse = List<ScheduleItem>

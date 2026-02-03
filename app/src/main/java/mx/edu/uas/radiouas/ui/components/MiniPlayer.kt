@@ -1,4 +1,4 @@
-package mx.edu.uas.radiouas
+package mx.edu.uas.radiouas.ui.components
 
 import androidx.annotation.OptIn
 import androidx.compose.foundation.layout.Column
@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -26,6 +27,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.util.UnstableApi
+import mx.edu.uas.radiouas.RadioViewModel
 
 @OptIn(UnstableApi::class)
 @Composable

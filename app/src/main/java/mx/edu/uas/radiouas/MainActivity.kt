@@ -38,9 +38,13 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import androidx.media3.common.util.UnstableApi
 import kotlinx.coroutines.launch
+import mx.edu.uas.radiouas.ui.components.MiniPlayer
+import mx.edu.uas.radiouas.ui.screens.NoticiasScreen
+import mx.edu.uas.radiouas.ui.screens.PodcastsScreen
+import mx.edu.uas.radiouas.ui.screens.ProgramacionScreen
+import mx.edu.uas.radiouas.ui.screens.RadioPlayerScreen
+import mx.edu.uas.radiouas.ui.screens.VideoPlayerScreen
 import mx.edu.uas.radiouas.ui.theme.RadioUASTheme
-
-//import mx.edu.uas.radiouas.ui.screens.ProgramacionScreen
 
 // Color Azul Marino Institucional UAS
 val AzulUAS = Color(0xFF002D56)
@@ -56,7 +60,6 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             RadioUASTheme {
-                // Pasamos el viewModel a tu navegación o pantalla principal
                 MainScreen(radioViewModel)
             }
         }
@@ -70,7 +73,8 @@ class MainActivity : ComponentActivity() {
 fun MainScreen(radioViewModel: RadioViewModel) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
-    // Variable para saber qué sección mostrar
+
+    // Variable para controlar la navegación
     var currentSection by remember { mutableStateOf("Noticias") }
 
     ModalNavigationDrawer(
@@ -78,20 +82,39 @@ fun MainScreen(radioViewModel: RadioViewModel) {
         drawerContent = {
             ModalDrawerSheet {
                 Spacer(modifier = Modifier.height(12.dp))
-                Text("  RADIO UAS", style = MaterialTheme.typography.headlineSmall, color = AzulUAS)
+                Text(
+                    text = "  RADIO UAS",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = AzulUAS
+                )
                 Divider(modifier = Modifier.padding(vertical = 8.dp))
 
-                // Opciones del Menú
-                NavigationDrawerItem(label = { Text("Noticias") }, selected = currentSection == "Noticias",
-                    onClick = { currentSection = "Noticias"; scope.launch { drawerState.close() } })
-                NavigationDrawerItem(label = { Text("Radio en Vivo") }, selected = currentSection == "Radio",
-                    onClick = { currentSection = "Radio"; scope.launch { drawerState.close() } })
-                NavigationDrawerItem(label = { Text("TV en Vivo") }, selected = currentSection == "Video",
-                    onClick = { currentSection = "Video"; scope.launch { drawerState.close() } })
-                NavigationDrawerItem(label = { Text("Programación") }, selected = currentSection == "Programacion",
-                    onClick = { currentSection = "Programacion"; scope.launch { drawerState.close() } })
-                NavigationDrawerItem(label = { Text("Podcasts (Emby)") }, selected = currentSection == "Podcasts",
-                    onClick = { currentSection = "Podcasts"; scope.launch { drawerState.close() } })
+                // Menú Lateral
+                NavigationDrawerItem(
+                    label = { Text("Noticias") },
+                    selected = currentSection == "Noticias",
+                    onClick = { currentSection = "Noticias"; scope.launch { drawerState.close() } }
+                )
+                NavigationDrawerItem(
+                    label = { Text("Radio en Vivo") },
+                    selected = currentSection == "Radio",
+                    onClick = { currentSection = "Radio"; scope.launch { drawerState.close() } }
+                )
+                NavigationDrawerItem(
+                    label = { Text("TV en Vivo") },
+                    selected = currentSection == "Video",
+                    onClick = { currentSection = "Video"; scope.launch { drawerState.close() } }
+                )
+                NavigationDrawerItem(
+                    label = { Text("Programación") },
+                    selected = currentSection == "Programacion",
+                    onClick = { currentSection = "Programacion"; scope.launch { drawerState.close() } }
+                )
+                NavigationDrawerItem(
+                    label = { Text("Podcasts") },
+                    selected = currentSection == "Podcasts",
+                    onClick = { currentSection = "Podcasts"; scope.launch { drawerState.close() } }
+                )
             }
         }
     ) {
@@ -106,38 +129,34 @@ fun MainScreen(radioViewModel: RadioViewModel) {
                         }
                     }
                 )
-
             },
             bottomBar = {
                 MiniPlayer(radioViewModel = radioViewModel)
             }
-        ) {
-            paddingValues ->
-            Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
-                // Aquí llamaremos a cada sección según la selección
+        ) { paddingValues ->
+            Box(
+                modifier = Modifier
+                    .padding(paddingValues)
+                    .fillMaxSize()
+            ) {
+                // Navegación principal
                 when (currentSection) {
                     "Noticias" -> NoticiasScreen()
                     "Radio" -> RadioPlayerScreen(radioViewModel)
-                    "Video" -> VideoPlayerScreen() // <--- Ahora ya tiene funcionalidad real
+                    "Video" -> VideoPlayerScreen()
                     "Programacion" -> ProgramacionScreen(
-                        // Pasamos el ViewModel de programación
-                        //viewModel = programacionViewModel,
-
-                        // Conectamos el clic de la tarjeta azul
                         onPlayRadio = {
-                            // 1. Obtenemos qué está sonando actualmente
-                            val urlActual = radioViewModel.player?.currentMediaItem?.localConfiguration?.uri?.toString()
+                            // CORRECCIÓN: Usamos 'isLive' en lugar de comparar URLs manualmente.
+                            // 'isLive' es true cuando está cargada la estación de radio.
+                            val esLaRadio = radioViewModel.isLive
 
-                            // 2. Verificamos si es la Radio
-                            val esLaRadio = urlActual == radioViewModel.streamURL
-
-                            // 3. Lógica de protección:
-                            // Solo mandamos la orden si NO está sonando, O si está sonando otra cosa (podcast)
+                            // Lógica:
+                            // 1. Si está pausado (!isPlaying) -> Dale Play.
+                            // 2. Si está sonando un Podcast (!esLaRadio) -> Cambia a Radio.
+                            // 3. Si ya está sonando la Radio -> No hagas nada (evita pausarla).
                             if (!radioViewModel.isPlaying || !esLaRadio) {
                                 radioViewModel.playRadioOAlternar()
                             }
-                            // Si ya está sonando la radio (isPlaying && esLaRadio), no hacemos nada.
-                            // Así evitamos que se pause por error.
                         }
                     )
                     "Podcasts" -> PodcastsScreen(radioViewModel)

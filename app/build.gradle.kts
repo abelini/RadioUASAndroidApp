@@ -6,12 +6,12 @@ plugins {
 
 android {
     namespace = "mx.edu.uas.radiouas"
-    compileSdk = 36
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "mx.edu.uas.radiouas"
         minSdk = 24
-        targetSdk = 36
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
@@ -20,7 +20,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

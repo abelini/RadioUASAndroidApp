@@ -1,4 +1,4 @@
-package mx.edu.uas.radiouas
+package mx.edu.uas.radiouas.model
 
 data class Podcast(
     val id: String,

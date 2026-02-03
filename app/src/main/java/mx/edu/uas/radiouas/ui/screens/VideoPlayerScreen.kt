@@ -1,4 +1,4 @@
-package mx.edu.uas.radiouas
+package mx.edu.uas.radiouas.ui.screens
 
 import androidx.annotation.OptIn
 import androidx.compose.foundation.layout.Box

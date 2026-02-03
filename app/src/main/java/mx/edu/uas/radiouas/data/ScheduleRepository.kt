@@ -13,24 +13,23 @@ import mx.edu.uas.radiouas.model.ScheduleItem
 import mx.edu.uas.radiouas.utils.ScheduleUtils
 import java.time.LocalTime
 
-// Usamos 'object' para que sea un Singleton (una única instancia para toda la app)
+// Singleton para manejar los datos de la programación en toda la app
 object ScheduleRepository {
 
-    // 1. Aquí guardamos la lista completa cuando baja del servidor
+    // Fuente de verdad única
     private val _fullSchedule = MutableStateFlow<List<ScheduleItem>>(emptyList())
     val fullSchedule: StateFlow<List<ScheduleItem>> = _fullSchedule.asStateFlow()
 
-    // 2. Un reloj interno que emite un "tic" cada minuto
+    // Reloj interno: emite un pulso cada minuto
     @RequiresApi(Build.VERSION_CODES.O)
     private val _ticker = flow {
         while (true) {
             emit(LocalTime.now())
-            delay(60_000) // Espera 1 minuto
+            delay(60_000) // 60 segundos
         }
     }
 
-    // 3. MAGIA: Combinamos la Lista + El Reloj
-    // Cada vez que cambie la lista O pase un minuto, esto se recalcula solo.
+    // Lógica reactiva: Recalcula el programa en vivo si cambia la lista O si pasa el tiempo
     @RequiresApi(Build.VERSION_CODES.O)
     val currentLiveProgram: Flow<ScheduleItem?> = _fullSchedule.combine(_ticker) { schedule, _ ->
         schedule.find { item ->
@@ -38,7 +37,6 @@ object ScheduleRepository {
         }
     }
 
-    // Función para cargar los datos (llámala donde hacías el fetch antes)
     suspend fun updateSchedule(newList: List<ScheduleItem>) {
         _fullSchedule.emit(newList)
     }
