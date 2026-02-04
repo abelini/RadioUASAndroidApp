@@ -26,7 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import mx.edu.uas.radiouas.R // Asegúrate de que esto importe tus recursos
+import mx.edu.uas.radiouas.R
 import mx.edu.uas.radiouas.ui.viewmodel.RadioViewModel
 import mx.edu.uas.radiouas.utils.AppConfig
 
@@ -107,7 +107,7 @@ fun RadioPlayerScreen(viewModel: RadioViewModel) {
             // 3. INFORMACIÓN DEL PROGRAMA
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    text = if (viewModel.currentTitle.isNotEmpty()) viewModel.currentTitle else AppConfig.RADIO_NAME,
+                    text = viewModel.currentTitle.ifEmpty { AppConfig.RADIO_NAME },
                     style = MaterialTheme.typography.headlineSmall,
                     color = Color.White,
                     fontWeight = FontWeight.Bold,
@@ -118,7 +118,7 @@ fun RadioPlayerScreen(viewModel: RadioViewModel) {
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = if (viewModel.currentSubtitle.isNotEmpty()) viewModel.currentTitle else AppConfig.RADIO_SLOGAN,
+                    text = viewModel.currentSubtitle.ifEmpty { AppConfig.RADIO_SLOGAN },
                     style = MaterialTheme.typography.bodyLarge,
                     color = Color.LightGray,
                     textAlign = TextAlign.Center
