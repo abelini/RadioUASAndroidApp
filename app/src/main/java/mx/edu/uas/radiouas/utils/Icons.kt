@@ -8,6 +8,7 @@ import androidx.compose.material.icons.rounded.Female
 import androidx.compose.material.icons.rounded.HeadsetMic
 import androidx.compose.material.icons.rounded.HealthAndSafety
 import androidx.compose.material.icons.rounded.LibraryMusic
+import androidx.compose.material.icons.rounded.Movie
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Newspaper
 import androidx.compose.material.icons.rounded.Palette
@@ -29,45 +30,20 @@ data class CategoryStyle(val icon: ImageVector, val color: Color)
 
 fun getCategoryStyle(slug: String?): CategoryStyle {
     return when (slug?.lowercase()) {
-        // Creatividad, misterio y sensibilidad
-        "music" -> CategoryStyle(Icons.Rounded.MusicNote, Color(0xFF9C27B0)) // Morado
-
-        // Urgencia, atención (común en noticieros de última hora o periodismo serio)
-        "journal" -> CategoryStyle(Icons.Rounded.HeadsetMic, Color(0xFFD32F2F)) // Rojo Intenso
-
-        // Sabiduría, inteligencia, institucional
-        "academic" -> CategoryStyle(Icons.Rounded.School, Color(0xFF3F51B5)) // Índigo
-
-        // Tecnología, precisión, laboratorios
-        "science" -> CategoryStyle(Icons.Rounded.Science, Color(0xFF009688)) // Verde Azulado (Teal)
-
-        // Femenino, fuerza (color estándar para temáticas de mujer)
-        "women" -> CategoryStyle(Icons.Rounded.Female, Color(0xFFE91E63)) // Rosa (Pink)
-
-        // Juego, inocencia, cielo (más suave que el azul corporativo)
-        "children" -> CategoryStyle(Icons.Rounded.ChildCare, Color(0xFF03A9F4)) // Azul Claro (Light Blue)
-
-        // Confianza, comunicación, verdad (clásico de medios informativos)
-        "news" -> CategoryStyle(Icons.Rounded.Newspaper, Color(0xFF1976D2)) // Azul Real
-
-        // Salud, vida, naturaleza
-        "health" -> CategoryStyle(Icons.Rounded.HealthAndSafety, Color(0xFF43A047)) // Verde Natural
-
-        // Energía, arte, diversidad
-        "culture" -> CategoryStyle(Icons.Rounded.Palette, Color(0xFFFF9800)) // Naranja
-
-        // El campo de juego, la cancha (césped)
-        "sports" -> CategoryStyle(Icons.Rounded.SportsSoccer, Color(0xFF2E7D32)) // Verde Oscuro (Jungle Green)
-
-        // Vibrante, enérgico, cambio
-        "youth" -> CategoryStyle(Icons.Rounded.People, Color(0xFFFF5722)) // Naranja Intenso (Deep Orange)
-
-        // Tecnología, moderno
-        "podcast" -> CategoryStyle(Icons.Rounded.Podcasts, Color(0xFF607D8B)) // Azul Grisáceo (Blue Grey)
-
-        "magazine" -> CategoryStyle(Icons.Rounded.LibraryMusic, Color(0xFF009688))
-
-        // Default: Azul institucional UAS
+        "music" -> CategoryStyle(Icons.Rounded.MusicNote, Color(0xFF9C27B0))
+        "science" -> CategoryStyle(Icons.Rounded.Science, Color(0xFF009688))
+        "news" -> CategoryStyle(Icons.Rounded.Newspaper, Color(0xFF1976D2))
+        "culture" -> CategoryStyle(Icons.Rounded.Palette, Color(0xFFFF9800))
+        "sports" -> CategoryStyle(Icons.Rounded.SportsSoccer, Color(0xFF2E7D32))
+        "entertainment" -> CategoryStyle(Icons.Rounded.Movie, Color(0xFFF44336))
+        "children" -> CategoryStyle(Icons.Rounded.ChildCare, Color(0xFF03A9F4))
+        "youth" -> CategoryStyle(Icons.Rounded.People, Color(0xFFFF5722))
+        "women" -> CategoryStyle(Icons.Rounded.Female, Color(0xFFE91E63))
+        "journal" -> CategoryStyle(Icons.Rounded.HeadsetMic, Color(0xFFD32F2F))
+        "academic" -> CategoryStyle(Icons.Rounded.School, Color(0xFF3F51B5))
+        "health" -> CategoryStyle(Icons.Rounded.HealthAndSafety, Color(0xFF43A047))
+        "podcast" -> CategoryStyle(Icons.Rounded.Podcasts, Color(0xFF607D8B))
+        "magazine" -> CategoryStyle(Icons.Rounded.LibraryMusic, Color(0xFF673AB7))
         else -> CategoryStyle(Icons.Rounded.Radio, Color(0xFF003366))
     }
 }

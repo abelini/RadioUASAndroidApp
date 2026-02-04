@@ -51,6 +51,8 @@ fun MiniPlayer(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(bottom = 1.dp)
             .clickable { onPlayerClick() },
         shadowElevation = 8.dp,
         color = Color(0xFFF0F0F0) // Gris muy claro para diferenciar del fondo blanco

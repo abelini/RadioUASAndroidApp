@@ -1,5 +1,6 @@
 package mx.edu.uas.radiouas
 
+import android.app.PendingIntent
 import android.content.Intent
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
@@ -19,6 +20,16 @@ class RadioAudioService : MediaSessionService() {
     @OptIn(UnstableApi::class)
     override fun onCreate() {
         super.onCreate()
+
+        val openAppIntent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP // Si ya está abierta, úsala, no crees otra
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            openAppIntent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
 
         // 1. CONFIGURACIÓN DE AUDIO (IMPORTANTE PARA INTERRUPCIONES)
         // Esto asegura que si te llaman, la radio se pause automáticamente,
@@ -46,7 +57,9 @@ class RadioAudioService : MediaSessionService() {
             .build()
 
         // 4. CREAR LA SESIÓN
-        mediaSession = MediaSession.Builder(this, player!!)
+
+        mediaSession = MediaSession.Builder(this, player !!)
+            .setSessionActivity(pendingIntent) // <--- ESTO ES LO QUE FALTABA
             .build()
     }
 
