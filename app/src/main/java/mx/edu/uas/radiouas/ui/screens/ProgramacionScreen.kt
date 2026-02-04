@@ -50,7 +50,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import mx.edu.uas.radiouas.getCategoryStyle
+import mx.edu.uas.radiouas.utils.getCategoryStyle
 import mx.edu.uas.radiouas.model.ScheduleItem
 import mx.edu.uas.radiouas.ui.viewmodel.ProgramacionViewModel
 import java.time.LocalTime
