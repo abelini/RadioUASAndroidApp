@@ -5,10 +5,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -17,57 +17,102 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import mx.edu.uas.radiouas.ui.viewmodel.RadioViewModel
 
 @Composable
 fun MiniPlayer(
     viewModel: RadioViewModel,
-    onClick: () -> Unit // Para expandir el player
+    onPlayerClick: () -> Unit
 ) {
-    // Solo mostramos el MiniPlayer si hay algo cargado (título no vacío o player listo)
-    if (viewModel.currentTitle.isEmpty()) return
+    // Obtenemos estados del ViewModel
+    val isPlaying = viewModel.isPlaying
+    val currentTitle = viewModel.currentTitle.ifEmpty { "Radio UAS" }
+    val currentSubtitle = viewModel.currentSubtitle
+    val coverUrl = viewModel.currentCoverUrl
+    val isLive = viewModel.isLive
 
-    // Diseño principal: Tarjeta elevada
-    Card(
+    // Progreso real del audio
+    val realProgress = viewModel.currentProgress
+
+    // ESTADO LOCAL: Controla el Slider mientras el usuario lo arrastra
+    var sliderPosition by remember { mutableStateOf(0f) }
+    var isDragging by remember { mutableStateOf(false) }
+
+    // Sincronización: Si NO estamos arrastrando, actualizamos con el progreso real
+    LaunchedEffect(realProgress) {
+        if (!isDragging) {
+            sliderPosition = realProgress
+        }
+    }
+
+    // Solo mostramos el MiniPlayer si hay algo cargado (o es la radio por defecto)
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .height(80.dp) // Un poco más alto para que quepa la imagen bien
-            .padding(8.dp)
-            .clickable { onClick() },
-        elevation = CardDefaults.cardElevation(8.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        shape = RoundedCornerShape(12.dp)
+            .clickable { onPlayerClick() },
+        shadowElevation = 8.dp,
+        color = Color(0xFFF0F0F0) // Gris muy claro para diferenciar del fondo blanco
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
+        Column {
+            // --- BARRA DE PROGRESO INTERACTIVA ---
+            if (isLive) {
+                // EN VIVO: Barra indeterminada (carga infinita) o estática completa
+                LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth().height(2.dp),
+                    color = Color(0xFFD4AF37), // Dorado/Amarillo UAS
+                    trackColor = Color.LightGray
+                )
+            } else {
+                // PODCAST: Slider interactivo
+                Slider(
+                    value = sliderPosition,
+                    onValueChange = { newPos ->
+                        isDragging = true
+                        sliderPosition = newPos
+                    },
+                    onValueChangeFinished = {
+                        viewModel.seekTo(sliderPosition)
+                        isDragging = false
+                    },
+                    colors = SliderDefaults.colors(
+                        thumbColor = Color(0xFF003366), // Azul UAS
+                        activeTrackColor = Color(0xFF003366),
+                        inactiveTrackColor = Color.LightGray
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(18.dp) // Altura reducida para que no ocupe mucho espacio
+                        .offset(y = (-8).dp) // Subimos un poco el slider para pegarlo al borde
+                )
+            }
 
-            // 1. CONTENIDO PRINCIPAL (Imagen + Textos + Botón)
+            // --- CONTENIDO DEL PLAYER ---
             Row(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(end = 16.dp), // Espacio para el botón play
+                    .padding(start = 12.dp, end = 12.dp, bottom = 12.dp, top = if(isLive) 12.dp else 0.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // --- IMAGEN DE PORTADA / LOGO ---
+                // 1. Imagen (Carátula)
                 AsyncImage(
-                    model = viewModel.currentCoverUrl, // Viene del ViewModel
-                    contentDescription = "Portada",
+                    model = coverUrl,
+                    contentDescription = "Carátula",
+                    contentScale = ContentScale.Crop,
                     modifier = Modifier
-                        .fillMaxHeight()
-                        .aspectRatio(1f)
-                        .background(Color.LightGray), // Fondo mientras carga
-                    contentScale = ContentScale.Crop
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color.Gray)
                 )
 
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(12.dp))
 
-                // --- TEXTOS ---
+                // 2. Textos (Título y Subtítulo)
                 Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.Center
+                    modifier = Modifier.weight(1f)
                 ) {
                     Text(
-                        text = viewModel.currentTitle,
+                        text = currentTitle,
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
@@ -75,37 +120,26 @@ fun MiniPlayer(
                         color = Color.Black
                     )
                     Text(
-                        text = if (viewModel.isLive) "EN VIVO" else viewModel.currentSubtitle,
+                        text = if(isLive) "EN VIVO • $currentSubtitle" else currentSubtitle,
                         style = MaterialTheme.typography.bodySmall,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        // Si es en vivo, ponemos el texto rojo, si no, gris
-                        color = if (viewModel.isLive) Color.Red else Color.Gray
+                        color = Color.DarkGray
                     )
                 }
 
-                // --- BOTÓN PLAY/PAUSE ---
-                IconButton(onClick = { viewModel.toggleReproduccion() }) {
+                // 3. Botón Play/Pause
+                IconButton(
+                    onClick = { viewModel.toggleReproduccion() },
+                    modifier = Modifier.size(48.dp)
+                ) {
                     Icon(
-                        imageVector = if (viewModel.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = "Reproducir",
-                        tint = Color(0xFF002D56),
-                        modifier = Modifier.size(36.dp)
+                        imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                        contentDescription = if (isPlaying) "Pausar" else "Reproducir",
+                        tint = Color(0xFF003366),
+                        modifier = Modifier.size(32.dp)
                     )
                 }
-            }
-
-            // 2. BARRA DE PROGRESO (Solo si es Podcast)
-            if (!viewModel.isLive) {
-                LinearProgressIndicator(
-                    progress = { viewModel.currentProgress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(3.dp)
-                        .align(Alignment.BottomCenter), // Pegada al fondo
-                    color = Color(0xFF002D56), // Azul UAS
-                    trackColor = Color.LightGray.copy(alpha = 0.5f),
-                )
             }
         }
     }

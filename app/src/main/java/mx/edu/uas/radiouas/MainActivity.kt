@@ -161,7 +161,7 @@ fun MainScreen(radioViewModel: RadioViewModel) {
             bottomBar = {
                 // Pasamos el lambda vacío {} porque el MiniPlayer ya maneja su click internamente
                 // o si quieres abrir el full player puedes poner la navegación aquí.
-                MiniPlayer(viewModel = radioViewModel, onClick = {
+                MiniPlayer(viewModel = radioViewModel, onPlayerClick = {
                     currentSection = "Radio"
                 })
             }

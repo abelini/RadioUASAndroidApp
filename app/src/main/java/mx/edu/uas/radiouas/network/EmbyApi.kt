@@ -25,6 +25,7 @@ interface EmbyApi {
         @Query("IncludeItemTypes") itemTypes: String = "Audio",
         @Query("Recursive") recursive: Boolean = true,
         @Query("SortBy") sortBy: String = "SortName",
+        @Query("SortOrder") sortOrder: String = "Descending",
         @Query("api_key") apiKey: String = AppConfig.EMBY_API_KEY,
         @Query("Fields") fields: String = "PrimaryImageAspectRatio,Overview,MediaSources"
     ): EmbyResponse

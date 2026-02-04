@@ -246,10 +246,16 @@ class RadioViewModel(application: Application) : AndroidViewModel(application) {
         p.play()
     }
 
-    // -------------------------------------------------------------------------
-    // DATOS AUXILIARES
-    // -------------------------------------------------------------------------
-
+    fun seekTo(fraction: Float) {
+        val p = player ?: return
+        // Solo permitimos seek si NO es radio en vivo y la duración es válida
+        if (!isLive && p.duration > 0) {
+            val seekPosition = (p.duration * fraction).toLong()
+            p.seekTo(seekPosition)
+            // Actualizamos inmediatamente el progreso local para evitar "saltos" visuales
+            currentProgress = fraction
+        }
+    }
     private fun establecerDatosRadioDefault() {
         currentTitle = liveProgramName
         currentSubtitle = liveProductionName
