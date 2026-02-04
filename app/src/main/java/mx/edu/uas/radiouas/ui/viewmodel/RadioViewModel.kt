@@ -1,10 +1,8 @@
-package mx.edu.uas.radiouas
+package mx.edu.uas.radiouas.ui.viewmodel
 
 import android.app.Application
 import android.content.ComponentName
 import android.net.Uri
-import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -19,47 +17,41 @@ import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import mx.edu.uas.radiouas.R
+import mx.edu.uas.radiouas.RadioAudioService
 import mx.edu.uas.radiouas.model.EmbyItem
 import mx.edu.uas.radiouas.network.EmbyClient
 import mx.edu.uas.radiouas.utils.AppConfig
+import mx.edu.uas.radiouas.utils.formatearFechaTitulo
 import org.json.JSONObject
 import java.net.URL
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 class RadioViewModel(application: Application) : AndroidViewModel(application) {
 
-    // --- CONFIGURACIÓN (Desde AppConfig) ---
-    // Usamos las constantes centralizadas
     private val streamURL = AppConfig.STREAM_AUDIO_URL
     private val programApiUrl = AppConfig.LIVE_PROGRAM_URL
-
-    // Textos por defecto para cuando falla la API o inicia
-    private var liveProgramName: String = "Radio UAS - 96.1 FM"
-    private var liveProductionName: String = "Señal en vivo"
-
+    private var liveProgramName: String = AppConfig.LIVE_RADIO_FEED_TITLE
+    private var liveProductionName: String = AppConfig.LIVE_RADIO_FEED_SUBTITLE
     // --- ESTADO DE LA UI (COMPOSE) ---
     var isPlaying by mutableStateOf(false)
     var isLoading by mutableStateOf(false)
-
     // Variables para mostrar en el MiniPlayer
     var currentTitle by mutableStateOf("Cargando...")
     var currentSubtitle by mutableStateOf("Conectando servicio...")
-    var currentCoverUrl by mutableStateOf<String?>(null) // Para la portada
+    var currentCoverUrl by mutableStateOf<String?>(null)
     var isLive by mutableStateOf(true) // True = Radio FM, False = Podcast
-
     // --- REPRODUCTOR MEDIA3 ---
     var player: Player? by mutableStateOf(null)
+    var currentProgress by mutableStateOf(0f)
     private var controllerFuture: ListenableFuture<MediaController>? = null
 
     init {
-        // 1. Iniciar conexión con el servicio
         iniciarConexionServicio()
-        // 2. Obtener nombres del programa de radio actual
         obtenerProgramacionEnVivo()
+        iniciarSeguimientoProgreso()
     }
 
     // -------------------------------------------------------------------------
@@ -83,6 +75,27 @@ class RadioViewModel(application: Application) : AndroidViewModel(application) {
         }, MoreExecutors.directExecutor())
     }
 
+    private fun iniciarSeguimientoProgreso() {
+        viewModelScope.launch(Dispatchers.Main) {
+            while (true) {
+                // Solo actualizamos si está sonando y NO es radio en vivo
+                if (isPlaying && !isLive && player != null) {
+                    val current = player?.currentPosition ?: 0L
+                    val total = player?.duration ?: 1L // Evitar división por cero
+
+                    if (total > 0) {
+                        currentProgress = current.toFloat() / total.toFloat()
+                    }
+                } else if (isLive) {
+                    // Si es radio, el progreso siempre es 0 o indeterminado
+                    currentProgress = 0f
+                }
+
+                // Esperamos 1 segundo antes de volver a revisar (ahorra batería)
+                delay(1000)
+            }
+        }
+    }
     private fun configurarListenerPlayer(controller: MediaController?) {
         controller?.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(playing: Boolean) {
@@ -131,20 +144,23 @@ class RadioViewModel(application: Application) : AndroidViewModel(application) {
     // -------------------------------------------------------------------------
 
     // 1. REPRODUCIR PODCAST
-    fun playPodcast(episodio: EmbyItem, imagenAlbumUrl: String) {
-        // Obtenemos la URL del audio usando EmbyClient
+    fun playPodcast(episodio: EmbyItem, imagenAlbumUrl: String, nombreAlbum: String) {
         val audioUrl = EmbyClient.getAudioUrl(episodio.id)
 
-        // Actualizamos estado visual inmediato
+        // 2. Formateamos el título AQUÍ para que se use en toda la app
+        val tituloFormateado = formatearFechaTitulo(episodio.name)
+
+        // Actualizamos estado visual
         isLive = false
-        currentTitle = episodio.name
-        currentSubtitle = "Podcast Radio UAS"
+        currentTitle = tituloFormateado  // Ahora el MiniPlayer mostrará la fecha bonita
+        currentSubtitle = nombreAlbum    // Ahora mostrará el nombre del álbum/programa
         currentCoverUrl = imagenAlbumUrl
 
+        // Pasamos los datos limpios al reproductor (esto arregla también la notificación)
         reproducirAudio(
             url = audioUrl,
-            titulo = episodio.name,
-            subtitulo = "Podcast",
+            titulo = tituloFormateado,
+            subtitulo = nombreAlbum,
             imagenUrl = imagenAlbumUrl,
             esStreamRadio = false
         )

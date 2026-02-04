@@ -8,15 +8,11 @@ import java.time.format.DateTimeFormatter
 
 object ScheduleUtils {
 
-    // Definimos la zona horaria de la Universidad (Sinaloa)
-    // Esto asegura que si alguien abre la app en Tijuana o CDMX,
-    // vea la programación correcta sincronizada con la estación.
     @RequiresApi(Build.VERSION_CODES.O)
     private val STATION_ZONE = ZoneId.of("America/Mazatlan")
 
     @RequiresApi(Build.VERSION_CODES.O)
     fun isLiveNow(startTimeStr: String, endTimeStr: String): Boolean {
-        // Obtenemos la hora actual DE SINALOA, no del celular del usuario
         val now = LocalTime.now(STATION_ZONE)
 
         return try {
@@ -34,7 +30,6 @@ object ScheduleUtils {
                 !now.isBefore(start) && now.isBefore(end)
             }
         } catch (e: Exception) {
-            // Si el formato de hora viene mal, asumimos que no está en vivo
             false
         }
     }

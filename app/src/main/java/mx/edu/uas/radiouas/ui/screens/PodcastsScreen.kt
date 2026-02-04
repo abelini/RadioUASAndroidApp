@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -26,15 +27,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import mx.edu.uas.radiouas.RadioViewModel
+import mx.edu.uas.radiouas.ui.viewmodel.RadioViewModel
 import mx.edu.uas.radiouas.model.EmbyItem
 import mx.edu.uas.radiouas.network.EmbyClient
+import mx.edu.uas.radiouas.ui.components.AudioWaveIndicator
+import mx.edu.uas.radiouas.utils.formatearFechaTitulo
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun PodcastsScreen(viewModel: RadioViewModel) { // <--- RECIBIMOS EL VIEWMODEL
+fun PodcastsScreen(viewModel: RadioViewModel) {
 
     // ESTADOS
     var albums by remember { mutableStateOf<List<EmbyItem>>(emptyList()) }
@@ -89,11 +93,24 @@ fun PodcastsScreen(viewModel: RadioViewModel) { // <--- RECIBIMOS EL VIEWMODEL
                 EpisodesList(
                     album = selectedAlbum!!,
                     episodes = episodes,
-                    onBack = { selectedAlbum = null }, // Botón visual de volver
+                    // PASAMOS ESTADO DE REPRODUCCIÓN
+                    currentPlayingTitle = viewModel.currentTitle,
+                    isPlaying = viewModel.isPlaying,
+                    onBack = { selectedAlbum = null },
                     onTrackClick = { track ->
-                        // AQUÍ LA LÓGICA DE REPRODUCCIÓN
-                        val coverUrl = EmbyClient.getImageUrl(selectedAlbum!!.id)
-                        viewModel.playPodcast(track, coverUrl)
+                        if (viewModel.currentTitle == formatearFechaTitulo(track.name)) {
+                            // Nota: Aquí comparamos contra el título ya formateado
+                            viewModel.toggleReproduccion()
+                        } else {
+                            val coverUrl = EmbyClient.getImageUrl(selectedAlbum!!.id)
+
+                            // CAMBIO AQUÍ: Pasamos también el nombre del álbum (selectedAlbum!!.name)
+                            viewModel.playPodcast(
+                                episodio = track,
+                                imagenAlbumUrl = coverUrl,
+                                nombreAlbum = selectedAlbum!!.name
+                            )
+                        }
                     }
                 )
             }
@@ -158,12 +175,15 @@ fun AlbumCard(album: EmbyItem, onClick: (EmbyItem) -> Unit) {
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun EpisodesList(
     album: EmbyItem,
     episodes: List<EmbyItem>,
+    currentPlayingTitle: String,
+    isPlaying: Boolean,
     onBack: () -> Unit,
-    onTrackClick: (EmbyItem) -> Unit // Callback nuevo
+    onTrackClick: (EmbyItem) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         // Cabecera con Imagen y Botón Volver
@@ -210,7 +230,16 @@ fun EpisodesList(
         // Lista de Pistas
         LazyColumn(contentPadding = PaddingValues(16.dp)) {
             items(episodes) { episode ->
-                EpisodeItem(episode, onClick = { onTrackClick(episode) })
+                // Calculamos si ESTE episodio específico está sonando
+                val esElQueSuena = (episode.name == currentPlayingTitle)
+                val iconoEsPause = (esElQueSuena && isPlaying)
+
+                EpisodeItem(
+                    episode = episode,
+                    mostrarIconoPause = iconoEsPause, // Le avisamos al item qué icono mostrar
+                    esElActivo = esElQueSuena, // Opcional: para pintarlo de otro color si quieres
+                    onClick = { onTrackClick(episode) }
+                )
             }
         }
     }
@@ -218,13 +247,23 @@ fun EpisodesList(
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun EpisodeItem(episode: EmbyItem, onClick: () -> Unit) {
+fun EpisodeItem(
+    episode: EmbyItem,
+    mostrarIconoPause: Boolean,
+    esElActivo: Boolean,
+    onClick: () -> Unit
+) {
+    // Definimos los colores: Si es el activo, usamos el azul de la marca, si no, negro.
+    val colorIcono = if (esElActivo) Color(0xFF002D56) else Color.Gray
+    val colorTexto = if (esElActivo) Color(0xFF002D56) else Color.Black
+    val pesoTexto = if (esElActivo) FontWeight.Bold else FontWeight.Normal
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
-            .clickable { onClick() }, // <--- CLIC EN LA TARJETA
-        elevation = CardDefaults.cardElevation(2.dp),
+            .clickable { onClick() },
+        elevation = CardDefaults.cardElevation(if (esElActivo) 6.dp else 2.dp), // Resaltar un poco más si suena
         colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
         Row(
@@ -233,42 +272,29 @@ fun EpisodeItem(episode: EmbyItem, onClick: () -> Unit) {
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Icono Play
+
             Icon(
-                imageVector = Icons.Default.PlayArrow,
-                contentDescription = "Reproducir",
-                tint = Color(0xFF002D56),
+                imageVector = if (mostrarIconoPause) Icons.Default.Pause else Icons.Default.PlayArrow,
+                contentDescription = if (mostrarIconoPause) "Pausar" else "Reproducir",
+                tint = colorIcono,
                 modifier = Modifier.size(32.dp)
             )
 
             Spacer(modifier = Modifier.width(16.dp))
 
-            // Nombre de la pista
             Text(
                 text = formatearFechaTitulo(episode.name),
                 style = MaterialTheme.typography.bodyLarge,
-                color = Color.Black,
-                fontWeight = FontWeight.Medium,
+                color = colorTexto, // Cambia de color si está activo
+                fontWeight = pesoTexto, // Se pone en negritas si está activo
                 modifier = Modifier.weight(1f)
             )
+
+            if (mostrarIconoPause) {
+                Spacer(modifier = Modifier.width(8.dp))
+                // Usamos el nuevo componente animado con el color activo
+                AudioWaveIndicator(color = colorIcono)
+            }
         }
     }
-}
-
-@RequiresApi(Build.VERSION_CODES.O)
-private fun formatearFechaTitulo(tituloOriginal: String): String {
-    try {
-        // Regex para detectar fechas tipo 20231025
-        val regex = Regex("""^(\d{4})(\d{2})(\d{2}).*""")
-        val match = regex.find(tituloOriginal)
-        if (match != null) {
-            val (anio, mes, dia) = match.destructured
-            val fecha = LocalDate.of(anio.toInt(), mes.toInt(), dia.toInt())
-            val formateador = DateTimeFormatter.ofPattern("d 'de' MMMM 'de' yyyy",
-                Locale("es", "MX")
-            )
-            return fecha.format(formateador)
-        }
-    } catch (e: Exception) { return tituloOriginal }
-    return tituloOriginal
 }

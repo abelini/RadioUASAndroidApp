@@ -1,89 +1,111 @@
 package mx.edu.uas.radiouas.ui.components
 
-import androidx.annotation.OptIn
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.media3.common.util.UnstableApi
-import mx.edu.uas.radiouas.RadioViewModel
+import coil.compose.AsyncImage
+import mx.edu.uas.radiouas.ui.viewmodel.RadioViewModel
 
-@OptIn(UnstableApi::class)
 @Composable
-fun MiniPlayer(radioViewModel: RadioViewModel) {
+fun MiniPlayer(
+    viewModel: RadioViewModel,
+    onClick: () -> Unit // Para expandir el player
+) {
+    // Solo mostramos el MiniPlayer si hay algo cargado (título no vacío o player listo)
+    if (viewModel.currentTitle.isEmpty()) return
 
-    Surface(
+    // Diseño principal: Tarjeta elevada
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .navigationBarsPadding() // Respeta los gestos de Android
+            .height(80.dp) // Un poco más alto para que quepa la imagen bien
             .padding(8.dp)
-            .height(72.dp),
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        shadowElevation = 4.dp
+            .clickable { onClick() },
+        elevation = CardDefaults.cardElevation(8.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        shape = RoundedCornerShape(12.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Información del Programa
-            Column(
-                modifier = Modifier.weight(1f).padding(start = 8.dp)
+        Box(modifier = Modifier.fillMaxSize()) {
+
+            // 1. CONTENIDO PRINCIPAL (Imagen + Textos + Botón)
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(end = 16.dp), // Espacio para el botón play
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = radioViewModel.currentTitle, // Título principal
-                    style = MaterialTheme.typography.bodyLarge,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                // --- IMAGEN DE PORTADA / LOGO ---
+                AsyncImage(
+                    model = viewModel.currentCoverUrl, // Viene del ViewModel
+                    contentDescription = "Portada",
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .aspectRatio(1f)
+                        .background(Color.LightGray), // Fondo mientras carga
+                    contentScale = ContentScale.Crop
                 )
 
-                // AQUI ESTÁ LA SOLUCIÓN: Usamos la variable subtitle
-                Text(
-                    text = radioViewModel.currentSubtitle, // <--- CAMBIO IMPORTANTE
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray, // Un gris suave se ve bien
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
+                Spacer(modifier = Modifier.width(8.dp))
 
-            // Botón de Acción
-            IconButton(
-                onClick = { radioViewModel.toggleReproduccion() },
-                modifier = Modifier.size(48.dp)
-            ) {
-                if (radioViewModel.isLoading) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                } else {
-                    Icon(
-                        imageVector = if (radioViewModel.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = "Play/Pause",
-                        modifier = Modifier.size(32.dp)
+                // --- TEXTOS ---
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = viewModel.currentTitle,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = Color.Black
+                    )
+                    Text(
+                        text = if (viewModel.isLive) "EN VIVO" else viewModel.currentSubtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        // Si es en vivo, ponemos el texto rojo, si no, gris
+                        color = if (viewModel.isLive) Color.Red else Color.Gray
                     )
                 }
+
+                // --- BOTÓN PLAY/PAUSE ---
+                IconButton(onClick = { viewModel.toggleReproduccion() }) {
+                    Icon(
+                        imageVector = if (viewModel.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = "Reproducir",
+                        tint = Color(0xFF002D56),
+                        modifier = Modifier.size(36.dp)
+                    )
+                }
+            }
+
+            // 2. BARRA DE PROGRESO (Solo si es Podcast)
+            if (!viewModel.isLive) {
+                LinearProgressIndicator(
+                    progress = { viewModel.currentProgress },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(3.dp)
+                        .align(Alignment.BottomCenter), // Pegada al fondo
+                    color = Color(0xFF002D56), // Azul UAS
+                    trackColor = Color.LightGray.copy(alpha = 0.5f),
+                )
             }
         }
     }

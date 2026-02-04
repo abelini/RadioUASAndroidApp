@@ -27,7 +27,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import mx.edu.uas.radiouas.R // Asegúrate de que esto importe tus recursos
-import mx.edu.uas.radiouas.RadioViewModel
+import mx.edu.uas.radiouas.ui.viewmodel.RadioViewModel
+import mx.edu.uas.radiouas.utils.AppConfig
 
 // Definimos los colores aquí o impórtalos de tu tema
 val AzulUAS = Color(0xFF002D56)
@@ -106,7 +107,7 @@ fun RadioPlayerScreen(viewModel: RadioViewModel) {
             // 3. INFORMACIÓN DEL PROGRAMA
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    text = viewModel.currentTitle.ifEmpty { "Radio UAS" },
+                    text = if (viewModel.currentTitle.isNotEmpty()) viewModel.currentTitle else AppConfig.RADIO_NAME,
                     style = MaterialTheme.typography.headlineSmall,
                     color = Color.White,
                     fontWeight = FontWeight.Bold,
@@ -117,7 +118,7 @@ fun RadioPlayerScreen(viewModel: RadioViewModel) {
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = viewModel.currentSubtitle.ifEmpty { "Señal con valor" },
+                    text = if (viewModel.currentSubtitle.isNotEmpty()) viewModel.currentTitle else AppConfig.RADIO_SLOGAN,
                     style = MaterialTheme.typography.bodyLarge,
                     color = Color.LightGray,
                     textAlign = TextAlign.Center
@@ -198,7 +199,7 @@ fun LiveBadge(isLive: Boolean) {
                     modifier = Modifier
                         .size(8.dp)
                         .clip(CircleShape)
-                        .background(Color.Red.copy(alpha = alpha)) // Aplicamos parpadeo
+                        .background(Color.Red.copy(alpha = alpha))
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(

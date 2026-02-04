@@ -72,14 +72,27 @@ fun ProgramacionScreen(
     val listState = rememberLazyListState()
     var selectedProgram by remember { mutableStateOf<ScheduleItem?>(null) }
 
-    // 3. Scroll automático al programa en vivo
-    LaunchedEffect(schedule) {
+    // --- LÓGICA DE TIEMPO REAL ---
+    // Obtenemos el día de la semana actual (1=Lunes, ... 7=Domingo)
+    val todayValue = java.time.LocalDate.now().dayOfWeek.value
+    // Verificamos si la pestaña seleccionada corresponde a HOY
+    val isToday = (selectedDay == todayValue)
+
+    // 3. Scroll automático y Gestión de cambios de día
+    LaunchedEffect(schedule, selectedDay) {
         if (schedule.isNotEmpty()) {
-            val liveIndex = schedule.indexOfFirst { item ->
-                viewModel.isLiveNow(item.startTime, item.endTime)
-            }
-            if (liveIndex != -1) {
-                listState.scrollToItem(liveIndex)
+            if (isToday) {
+                // SOLO si es HOY, buscamos el programa actual por hora
+                val liveIndex = schedule.indexOfFirst { item ->
+                    viewModel.isLiveNow(item.startTime, item.endTime)
+                }
+                if (liveIndex != -1) {
+                    // Animamos el scroll hacia el programa en vivo
+                    listState.animateScrollToItem(liveIndex)
+                }
+            } else {
+                // Si cambiamos a otro día (Lunes a Martes), reseteamos el scroll al inicio
+                listState.scrollToItem(0)
             }
         }
     }
@@ -90,6 +103,7 @@ fun ProgramacionScreen(
             .background(Color(0xFFF5F5F5))
     ) {
         // --- Selector de Días ---
+        // Nota: Asegúrate que tu ViewModel inicialice selectedDay con 'todayValue' en su init{}
         DaySelector(selectedDay = selectedDay, onDaySelected = { viewModel.onDaySelected(it) })
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -105,8 +119,10 @@ fun ProgramacionScreen(
                 contentPadding = PaddingValues(bottom = 80.dp)
             ) {
                 items(schedule) { item ->
-                    // Verificamos si es HOY y es AHORA
-                    val isLive = viewModel.isLiveNow(item.startTime, item.endTime)
+                    // CONDICIÓN ESTRICTA:
+                    // Está en vivo SOLO si coincide la hora Y es el día de hoy
+                    val isLiveTime = viewModel.isLiveNow(item.startTime, item.endTime)
+                    val isLive = isToday && isLiveTime
 
                     ProgramItem(
                         item = item,
@@ -116,7 +132,7 @@ fun ProgramacionScreen(
                                 // CASO 1: Está en VIVO -> Encender Radio
                                 onPlayRadio()
                             } else {
-                                // CASO 2: Es FUTURO -> Agendar Recordatorio
+                                // CASO 2: Es FUTURO o PASADO -> Agendar Recordatorio
                                 selectedProgram = item
                             }
                         }
@@ -132,8 +148,7 @@ fun ProgramacionScreen(
             program = program,
             onDismiss = { selectedProgram = null },
             onConfirm = {
-                // Aquí iría tu lógica de AlarmManager
-                println("Recordatorio agendado para: ${program.name}")
+                // Lógica de recordatorio
                 selectedProgram = null
             }
         )

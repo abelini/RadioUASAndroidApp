@@ -45,6 +45,12 @@ import mx.edu.uas.radiouas.ui.screens.ProgramacionScreen
 import mx.edu.uas.radiouas.ui.screens.RadioPlayerScreen
 import mx.edu.uas.radiouas.ui.screens.VideoPlayerScreen
 import mx.edu.uas.radiouas.ui.theme.RadioUASTheme
+import mx.edu.uas.radiouas.ui.viewmodel.RadioViewModel
+import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.LiveTv
+import androidx.compose.material.icons.rounded.Newspaper
+import androidx.compose.material.icons.rounded.Podcasts
+import androidx.compose.material.icons.rounded.Radio
 
 // Color Azul Marino Institucional UAS
 val AzulUAS = Color(0xFF002D56)
@@ -82,38 +88,60 @@ fun MainScreen(radioViewModel: RadioViewModel) {
         drawerContent = {
             ModalDrawerSheet {
                 Spacer(modifier = Modifier.height(12.dp))
+                // Un pequeño ajuste visual al título del menú
                 Text(
-                    text = "  RADIO UAS",
+                    text = "Radio UAS",
                     style = MaterialTheme.typography.headlineSmall,
-                    color = AzulUAS
+                    color = AzulUAS,
+                    modifier = Modifier.padding(start = 28.dp, top = 16.dp, bottom = 12.dp)
                 )
-                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                Divider(modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp))
 
-                // Menú Lateral
+                // --- MENÚ LATERAL CON ÍCONOS ---
+
+                // 1. Noticias
                 NavigationDrawerItem(
+                    icon = { Icon(Icons.Rounded.Newspaper, contentDescription = null) },
                     label = { Text("Noticias") },
                     selected = currentSection == "Noticias",
-                    onClick = { currentSection = "Noticias"; scope.launch { drawerState.close() } }
+                    onClick = { currentSection = "Noticias"; scope.launch { drawerState.close() } },
+                    modifier = Modifier.padding(horizontal = 12.dp)
                 )
+
+                // 2. Radio
                 NavigationDrawerItem(
+                    icon = { Icon(Icons.Rounded.Radio, contentDescription = null) },
                     label = { Text("Radio en Vivo") },
                     selected = currentSection == "Radio",
-                    onClick = { currentSection = "Radio"; scope.launch { drawerState.close() } }
+                    onClick = { currentSection = "Radio"; scope.launch { drawerState.close() } },
+                    modifier = Modifier.padding(horizontal = 12.dp)
                 )
+
+                // 3. TV / Video
                 NavigationDrawerItem(
+                    icon = { Icon(Icons.Rounded.LiveTv, contentDescription = null) },
                     label = { Text("TV en Vivo") },
                     selected = currentSection == "Video",
-                    onClick = { currentSection = "Video"; scope.launch { drawerState.close() } }
+                    onClick = { currentSection = "Video"; scope.launch { drawerState.close() } },
+                    modifier = Modifier.padding(horizontal = 12.dp)
                 )
+
+                // 4. Programación
                 NavigationDrawerItem(
+                    icon = { Icon(Icons.Rounded.CalendarMonth, contentDescription = null) },
                     label = { Text("Programación") },
                     selected = currentSection == "Programacion",
-                    onClick = { currentSection = "Programacion"; scope.launch { drawerState.close() } }
+                    onClick = { currentSection = "Programacion"; scope.launch { drawerState.close() } },
+                    modifier = Modifier.padding(horizontal = 12.dp)
                 )
+
+                // 5. Podcasts
                 NavigationDrawerItem(
+                    icon = { Icon(Icons.Rounded.Podcasts, contentDescription = null) },
                     label = { Text("Podcasts") },
                     selected = currentSection == "Podcasts",
-                    onClick = { currentSection = "Podcasts"; scope.launch { drawerState.close() } }
+                    onClick = { currentSection = "Podcasts"; scope.launch { drawerState.close() } },
+                    modifier = Modifier.padding(horizontal = 12.dp)
                 )
             }
         }
@@ -131,7 +159,11 @@ fun MainScreen(radioViewModel: RadioViewModel) {
                 )
             },
             bottomBar = {
-                MiniPlayer(radioViewModel = radioViewModel)
+                // Pasamos el lambda vacío {} porque el MiniPlayer ya maneja su click internamente
+                // o si quieres abrir el full player puedes poner la navegación aquí.
+                MiniPlayer(viewModel = radioViewModel, onClick = {
+                    currentSection = "Radio"
+                })
             }
         ) { paddingValues ->
             Box(
@@ -146,17 +178,12 @@ fun MainScreen(radioViewModel: RadioViewModel) {
                     "Video" -> VideoPlayerScreen()
                     "Programacion" -> ProgramacionScreen(
                         onPlayRadio = {
-                            // CORRECCIÓN: Usamos 'isLive' en lugar de comparar URLs manualmente.
-                            // 'isLive' es true cuando está cargada la estación de radio.
                             val esLaRadio = radioViewModel.isLive
-
-                            // Lógica:
-                            // 1. Si está pausado (!isPlaying) -> Dale Play.
-                            // 2. Si está sonando un Podcast (!esLaRadio) -> Cambia a Radio.
-                            // 3. Si ya está sonando la Radio -> No hagas nada (evita pausarla).
                             if (!radioViewModel.isPlaying || !esLaRadio) {
                                 radioViewModel.playRadioOAlternar()
                             }
+                            // Opcional: Cambiar a la pantalla de radio automáticamente
+                            currentSection = "Radio"
                         }
                     )
                     "Podcasts" -> PodcastsScreen(radioViewModel)
