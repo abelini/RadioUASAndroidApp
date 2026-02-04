@@ -32,9 +32,6 @@ import mx.edu.uas.radiouas.model.EmbyItem
 import mx.edu.uas.radiouas.network.EmbyClient
 import mx.edu.uas.radiouas.ui.components.AudioWaveIndicator
 import mx.edu.uas.radiouas.utils.formatearFechaTitulo
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -63,17 +60,17 @@ fun PodcastsScreen(viewModel: RadioViewModel) {
             isLoading = true
             try {
                 val response = EmbyClient.api.getEpisodes(albumId = selectedAlbum!!.id)
+                // REVERTIDO: Tomamos la lista tal cual viene del API (tú ya la ordenaste allá)
                 episodes = response.items
             } catch (e: Exception) {
-                // Error
+                // Error silencioso
             } finally {
                 isLoading = false
             }
         }
     }
 
-    // --- NAVEGACIÓN HACIA ATRÁS (HARDWARE) ---
-    // Si estamos viendo episodios y presionan "Atrás" en el cel, volvemos a álbumes
+    // --- NAVEGACIÓN HACIA ATRÁS ---
     BackHandler(enabled = selectedAlbum != null) {
         selectedAlbum = null
         episodes = emptyList()
@@ -93,18 +90,16 @@ fun PodcastsScreen(viewModel: RadioViewModel) {
                 EpisodesList(
                     album = selectedAlbum!!,
                     episodes = episodes,
-                    // PASAMOS ESTADO DE REPRODUCCIÓN
-                    currentPlayingTitle = viewModel.currentTitle,
+                    // CAMBIO: Pasamos ID en vez de Título
+                    currentPlayingId = viewModel.currentMediaId,
                     isPlaying = viewModel.isPlaying,
                     onBack = { selectedAlbum = null },
                     onTrackClick = { track ->
-                        if (viewModel.currentTitle == formatearFechaTitulo(track.name)) {
-                            // Nota: Aquí comparamos contra el título ya formateado
+                        // CAMBIO: Lógica basada en IDs (más robusta)
+                        if (viewModel.currentMediaId == track.id) {
                             viewModel.toggleReproduccion()
                         } else {
                             val coverUrl = EmbyClient.getImageUrl(selectedAlbum!!.id)
-
-                            // CAMBIO AQUÍ: Pasamos también el nombre del álbum (selectedAlbum!!.name)
                             viewModel.playPodcast(
                                 episodio = track,
                                 imagenAlbumUrl = coverUrl,
@@ -180,13 +175,13 @@ fun AlbumCard(album: EmbyItem, onClick: (EmbyItem) -> Unit) {
 fun EpisodesList(
     album: EmbyItem,
     episodes: List<EmbyItem>,
-    currentPlayingTitle: String,
+    currentPlayingId: String?, // Recibimos el ID
     isPlaying: Boolean,
     onBack: () -> Unit,
     onTrackClick: (EmbyItem) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
-        // Cabecera con Imagen y Botón Volver
+        // Cabecera
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -198,24 +193,17 @@ fun EpisodesList(
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
             )
-            // Capa oscura para leer texto
             Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha=0.4f)))
 
-            // Botón Volver
             IconButton(
                 onClick = onBack,
                 modifier = Modifier
-                    .padding(top = 40.dp, start = 16.dp) // Ajuste para barra de estado
+                    .padding(top = 40.dp, start = 16.dp)
                     .align(Alignment.TopStart)
             ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Volver",
-                    tint = Color.White
-                )
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver", tint = Color.White)
             }
 
-            // Título del Álbum
             Text(
                 text = album.name,
                 style = MaterialTheme.typography.headlineSmall,
@@ -227,17 +215,18 @@ fun EpisodesList(
             )
         }
 
-        // Lista de Pistas
+        // Lista de Episodios
         LazyColumn(contentPadding = PaddingValues(16.dp)) {
             items(episodes) { episode ->
-                // Calculamos si ESTE episodio específico está sonando
-                val esElQueSuena = (episode.name == currentPlayingTitle)
+
+                // CAMBIO: Comparamos ID con ID
+                val esElQueSuena = (episode.id == currentPlayingId)
                 val iconoEsPause = (esElQueSuena && isPlaying)
 
                 EpisodeItem(
                     episode = episode,
-                    mostrarIconoPause = iconoEsPause, // Le avisamos al item qué icono mostrar
-                    esElActivo = esElQueSuena, // Opcional: para pintarlo de otro color si quieres
+                    mostrarIconoPause = iconoEsPause,
+                    esElActivo = esElQueSuena,
                     onClick = { onTrackClick(episode) }
                 )
             }
@@ -253,7 +242,6 @@ fun EpisodeItem(
     esElActivo: Boolean,
     onClick: () -> Unit
 ) {
-    // Definimos los colores: Si es el activo, usamos el azul de la marca, si no, negro.
     val colorIcono = if (esElActivo) Color(0xFF002D56) else Color.Gray
     val colorTexto = if (esElActivo) Color(0xFF002D56) else Color.Black
     val pesoTexto = if (esElActivo) FontWeight.Bold else FontWeight.Normal
@@ -263,7 +251,7 @@ fun EpisodeItem(
             .fillMaxWidth()
             .padding(vertical = 4.dp)
             .clickable { onClick() },
-        elevation = CardDefaults.cardElevation(if (esElActivo) 6.dp else 2.dp), // Resaltar un poco más si suena
+        elevation = CardDefaults.cardElevation(if (esElActivo) 6.dp else 2.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
         Row(
@@ -285,14 +273,13 @@ fun EpisodeItem(
             Text(
                 text = formatearFechaTitulo(episode.name),
                 style = MaterialTheme.typography.bodyLarge,
-                color = colorTexto, // Cambia de color si está activo
-                fontWeight = pesoTexto, // Se pone en negritas si está activo
+                color = colorTexto,
+                fontWeight = pesoTexto,
                 modifier = Modifier.weight(1f)
             )
 
             if (mostrarIconoPause) {
                 Spacer(modifier = Modifier.width(8.dp))
-                // Usamos el nuevo componente animado con el color activo
                 AudioWaveIndicator(color = colorIcono)
             }
         }

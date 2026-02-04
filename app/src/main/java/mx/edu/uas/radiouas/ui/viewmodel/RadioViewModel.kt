@@ -39,6 +39,8 @@ class RadioViewModel(application: Application) : AndroidViewModel(application) {
     var isPlaying by mutableStateOf(false)
     var isLoading by mutableStateOf(false)
     // Variables para mostrar en el MiniPlayer
+    // En las variables de estado UI
+    var currentMediaId by mutableStateOf<String?>(null)
     var currentTitle by mutableStateOf("Cargando...")
     var currentSubtitle by mutableStateOf("Conectando servicio...")
     var currentCoverUrl by mutableStateOf<String?>(null)
@@ -130,7 +132,7 @@ class RadioViewModel(application: Application) : AndroidViewModel(application) {
             currentTitle = item?.mediaMetadata?.title.toString()
             currentSubtitle = item?.mediaMetadata?.artist.toString()
             currentCoverUrl = item?.mediaMetadata?.artworkUri?.toString()
-
+            currentMediaId = item?.mediaId
             // Determinamos si es radio en vivo basándonos en la URL exacta
             isLive = (uri == streamURL)
         } else {
@@ -155,9 +157,11 @@ class RadioViewModel(application: Application) : AndroidViewModel(application) {
         currentTitle = tituloFormateado  // Ahora el MiniPlayer mostrará la fecha bonita
         currentSubtitle = nombreAlbum    // Ahora mostrará el nombre del álbum/programa
         currentCoverUrl = imagenAlbumUrl
+        currentMediaId = episodio.id
 
         // Pasamos los datos limpios al reproductor (esto arregla también la notificación)
         reproducirAudio(
+            id = episodio.id,
             url = audioUrl,
             titulo = tituloFormateado,
             subtitulo = nombreAlbum,
@@ -205,6 +209,7 @@ class RadioViewModel(application: Application) : AndroidViewModel(application) {
         establecerDatosRadioDefault()
 
         reproducirAudio(
+            id = "Radio UAS",
             url = streamURL,
             titulo = liveProgramName,
             subtitulo = liveProductionName,
@@ -215,6 +220,7 @@ class RadioViewModel(application: Application) : AndroidViewModel(application) {
 
     // Método genérico interno para cargar media en ExoPlayer
     private fun reproducirAudio(
+        id: String,
         url: String,
         titulo: String,
         subtitulo: String,
@@ -234,6 +240,7 @@ class RadioViewModel(application: Application) : AndroidViewModel(application) {
         val mimeType = if (esStreamRadio) MimeTypes.AUDIO_MPEG else MimeTypes.AUDIO_MPEG
 
         val mediaItem = MediaItem.Builder()
+            .setMediaId(id)
             .setUri(url)
             .setMimeType(mimeType)
             .setMediaMetadata(metadata)
