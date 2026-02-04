@@ -107,7 +107,7 @@ fun RadioPlayerScreen(viewModel: RadioViewModel) {
             // 3. INFORMACIÓN DEL PROGRAMA
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    //text = if (viewModel.currentTitle.isNotEmpty()) viewModel.currentTitle else AppConfig.RADIO_NAME,
+                    text = if (viewModel.currentTitle.isNotEmpty()) viewModel.currentTitle else AppConfig.RADIO_NAME,
                     style = MaterialTheme.typography.headlineSmall,
                     color = Color.White,
                     fontWeight = FontWeight.Bold,

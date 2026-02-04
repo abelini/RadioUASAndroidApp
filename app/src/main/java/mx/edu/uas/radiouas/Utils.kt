@@ -7,6 +7,7 @@ import androidx.compose.material.icons.rounded.ChildCare
 import androidx.compose.material.icons.rounded.Female
 import androidx.compose.material.icons.rounded.HeadsetMic
 import androidx.compose.material.icons.rounded.HealthAndSafety
+import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Newspaper
 import androidx.compose.material.icons.rounded.Palette
@@ -21,8 +22,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import java.time.LocalTime
 import java.time.DayOfWeek
 import java.time.LocalDate
-import java.time.format.TextStyle
-import java.util.Locale
+
 
 // Data class simple para devolver Icono y Color juntos (Opcional, pero se ve muy Pro)
 data class CategoryStyle(val icon: ImageVector, val color: Color)
@@ -65,11 +65,12 @@ fun getCategoryStyle(slug: String?): CategoryStyle {
         // Tecnología, moderno
         "podcast" -> CategoryStyle(Icons.Rounded.Podcasts, Color(0xFF607D8B)) // Azul Grisáceo (Blue Grey)
 
+        "magazine" -> CategoryStyle(Icons.Rounded.LibraryMusic, Color(0xFF009688))
+
         // Default: Azul institucional UAS
         else -> CategoryStyle(Icons.Rounded.Radio, Color(0xFF003366))
     }
 }
-
 
 
 // Obtiene el nombre del día en Español (ej: "Lunes", "Martes")
